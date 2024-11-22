@@ -74,6 +74,24 @@ class GestionUtilisateur {
         $this->supprimerReservation($reservation);
     }
 
+    public function afficherCreneauxParActivite($personne, $activite): array {
+        if (!$personne instanceof Personne) {
+            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
+        }
+        if (!$activite instanceof Activite) {
+            throw new InvalidArgumentException("L'activite doit être une instance de Activite.");
+        }
+    
+        $creneaux = [];
+        foreach ($this->_reservations as $reservation) {
+            if ($reservation->getPersonne() === $personne && $reservation->getActivite() === $activite) {
+                $creneaux[] = $reservation->getCreneau();
+            }
+        }
+    
+        return $creneaux;
+    }
+
     public function afficherCreneauxDisponiblesParActivite($activite): array {
         if (!$activite instanceof Activite) {
             throw new InvalidArgumentException("L'activité doit être une instance de Activite.");
@@ -135,6 +153,21 @@ class GestionUtilisateur {
             }
         }
         return $reservationsUtilisateur;
+    }
+    
+    public function afficherTousLesCreneauxPourUtilisateur($personne): array {
+        if (!$personne instanceof Personne) {
+            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
+        }
+    
+        $creneaux = [];
+        foreach ($this->_reservations as $reservation) {
+            if ($reservation->getPersonne() === $personne) {
+                $creneaux[] = $reservation->getCreneau();
+            }
+        }
+    
+        return $creneaux;
     }
     
     public function afficherReservationsUtilisateurParActivite($personne, $activite): array {

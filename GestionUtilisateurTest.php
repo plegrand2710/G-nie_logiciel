@@ -483,4 +483,57 @@ class GestionUtilisateurTest extends TestCase {
         $this->assertCount(2, $result);
         $this->assertSame([$reservation1, $reservation2], $result);
     }
+
+    public function testAfficherCreneauxParActivite() {
+        $personne = $this->createMock(Personne::class);
+        $activite = $this->createMock(Activite::class);
+    
+        $creneau1 = $this->createMock(Creneau::class);
+        $reservation1 = $this->createMock(Reservation::class);
+        $reservation1->method('getId')->willReturn(1);
+        $reservation1->method('getPersonne')->willReturn($personne);
+        $reservation1->method('getActivite')->willReturn($activite);
+        $reservation1->method('getCreneau')->willReturn($creneau1);
+    
+        $creneau2 = $this->createMock(Creneau::class);
+        $reservation2 = $this->createMock(Reservation::class);
+        $reservation2->method('getId')->willReturn(2);
+        $reservation2->method('getPersonne')->willReturn($personne);
+        $reservation2->method('getActivite')->willReturn($activite);
+        $reservation2->method('getCreneau')->willReturn($creneau2);
+    
+        $this->gestionUtilisateur->ajouterReservation($reservation1);
+        $this->gestionUtilisateur->ajouterReservation($reservation2);
+    
+        $result = $this->gestionUtilisateur->afficherCreneauxParActivite($personne, $activite);
+    
+        $this->assertCount(2, $result);
+        $this->assertContains($creneau1, $result);
+        $this->assertContains($creneau2, $result);
+    }
+
+    public function testAfficherTousLesCreneauxPourUtilisateur() {
+        $personne = $this->createMock(Personne::class);
+    
+        $creneau1 = $this->createMock(Creneau::class);
+        $reservation1 = $this->createMock(Reservation::class);
+        $reservation1->method('getId')->willReturn(1);
+        $reservation1->method('getPersonne')->willReturn($personne);
+        $reservation1->method('getCreneau')->willReturn($creneau1);
+    
+        $creneau2 = $this->createMock(Creneau::class);
+        $reservation2 = $this->createMock(Reservation::class);
+        $reservation2->method('getId')->willReturn(2);
+        $reservation2->method('getPersonne')->willReturn($personne);
+        $reservation2->method('getCreneau')->willReturn($creneau2);
+    
+        $this->gestionUtilisateur->ajouterReservation($reservation1);
+        $this->gestionUtilisateur->ajouterReservation($reservation2);
+    
+        $result = $this->gestionUtilisateur->afficherTousLesCreneauxPourUtilisateur($personne);
+    
+        $this->assertCount(2, $result);
+        $this->assertContains($creneau1, $result);
+        $this->assertContains($creneau2, $result);
+    }
 }
