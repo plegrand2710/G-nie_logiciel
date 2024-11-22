@@ -25,17 +25,18 @@ class Reservation {
             throw new InvalidArgumentException("L'activité doit être une instance de la classe Activite.");
         }
 
-        if (!$personne instanceof Utilisateur) {
-            throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Utilisateur.");
+        if (!$personne instanceof Personne) {
+            throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Personne.");
         }
 
         self::$_ids[] = $id;
         $this->_id = $id;
         $this->_creneau = $creneau;
         $this->_activite = $activite;
-        $this->_utilisateur = $personne;
+        $this->_personne = $personne;
         $this->_statut = 'en attente';
-        $this->_dateExpiration = new DateTime()->modify('+24 hours');
+        $this->_dateExpiration = new DateTime();
+        $this->_dateExpiration->modify('+24 hours');
     }
 
     public function getId() {
@@ -70,8 +71,8 @@ class Reservation {
     }
 
     public function setPersonne($personne) {
-        if (!$personne instanceof Utilisateur) {
-            throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Utilisateur.");
+        if (!$personne instanceof Personne) {
+            throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Personne.");
         }
 
         $this->_personne = $personne;
@@ -99,6 +100,10 @@ class Reservation {
             $this->annulerReservation();
         }
 
+        if ($this->_statut === 'confirmée' && $statut === 'en attente') {
+            throw new LogicException("Une réservation confirmée ne peut pas revenir en attente.");
+        }
+
         $this->_statut = $statut;
     }
 
@@ -120,7 +125,7 @@ class Reservation {
             return false;
         }
 
-        $this->_statut !== 'confirmée';
+        $this->_statut = 'confirmée';
         return true;
     }
 
