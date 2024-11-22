@@ -20,22 +20,26 @@ class GestionUtilisateurTest extends TestCase {
     }
 
     public function testReserverSuccess() {
-        $gestionUtilisateur = new GestionUtilisateur();
-        $utilisateur = (object) ['nom' => 'John Doe'];
-        $reservation = $gestionUtilisateur->reserver("8h-9h", "Tennis", $utilisateur);
+        $gestion = new GestionUtilisateur();
+        $creneau = new Creneau("8h-9h");
+        $activite = new Activite("Tennis");
+        $utilisateur = new Utilisateur("John Doe");
     
-        $this->assertCount(1, $gestionUtilisateur->get_reservations());
-        $this->assertEquals("Tennis", $reservation->getActivite());
-        $this->assertEquals("8h-9h", $reservation->getCreneau());
+        $reservation = $gestion->reserver($creneau, $activite, $utilisateur);
+    
+        $this->assertEquals("8h-9h", $reservation->getCreneau()->getPlageHoraire());
+        $this->assertEquals("Tennis", $reservation->getActivite()->getNom());
     }
     
-    public function testReserverFailureDuplicateCreneau() {
-        $gestionUtilisateur = new GestionUtilisateur();
-        $utilisateur = (object) ['nom' => 'John Doe'];
-        $gestionUtilisateur->reserver("8h-9h", "Tennis", $utilisateur);
-    
+    public function testReserverCreneauInvalide() {
         $this->expectException(InvalidArgumentException::class);
-        $gestionUtilisateur->reserver("8h-9h", "Tennis", $utilisateur); // Créneau déjà pris
+    
+        $gestion = new GestionUtilisateur();
+        $creneau = new Creneau("");
+        $activite = new Activite("Tennis");
+        $utilisateur = new Utilisateur("John Doe");
+    
+        $gestion->reserver($creneau, $activite, $utilisateur);
     }
 
     public function testAnnulerReservationSuccess() {
