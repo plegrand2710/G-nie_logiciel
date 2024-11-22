@@ -123,4 +123,34 @@ class GestionUtilisateur {
 
         throw new InvalidArgumentException("Aucune réservation trouvée avec l'ID spécifié.");
     }
+
+    public function afficherReservationsParUtilisateur($personne): array {
+        if (!$personne instanceof Personne) {
+            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
+        }
+        $reservationsUtilisateur = [];
+        foreach ($this->_reservations as $reservation) {
+            if ($reservation->getPersonne() === $personne) {
+                $reservationsUtilisateur[] = $reservation;
+            }
+        }
+        return $reservationsUtilisateur;
+    }
+    
+    public function afficherReservationsUtilisateurParActivite($personne, $activite): array {
+        if (!$personne instanceof Personne) {
+            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
+        }
+        if (!$activite instanceof Activite) {
+            throw new InvalidArgumentException("L'activite doit être une instance de Activite.");
+        }
+        $reservationsUtilisateur = [];
+        foreach ($this->_reservations as $reservation) {
+            if ($reservation->getPersonne() === $personne && $reservation->getActivite() === $activite) {
+                $reservationsUtilisateur[] = $reservation;
+            }
+        }
+        return $reservationsUtilisateur;
+    }
+    
 }
