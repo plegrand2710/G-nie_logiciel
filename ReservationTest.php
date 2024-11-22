@@ -170,4 +170,86 @@ class ReservationTest extends TestCase {
         $this->assertTrue($reservation->estExpirée(), "La réservation devrait être expirée.");
         $this->assertEquals('expirée', $reservation->getStatut(), "Le statut devrait être 'expirée'.");
     }
+
+    public function testReservationAvecDateExpirationDejaDepassee() {
+        $reservation = new Reservation(40, $this->creneau, $this->activite, $this->utilisateur);
+        
+        $reflection = new ReflectionClass($reservation);
+        $property = $reflection->getProperty('_dateExpiration');
+        $property->setAccessible(true);
+        $property->setValue($reservation, (new DateTime())->modify('-1 day'));
+    
+        $this->assertTrue($reservation->estExpirée(), "La réservation devrait être expirée immédiatement.");
+        $this->assertEquals('expirée', $reservation->getStatut(), "Le statut devrait être 'expirée' dès la création.");
+    }
+
+    public function testTransitionConfirmeeAnnuleeExpiree() {
+        $reservation = new Reservation(41, $this->creneau, $this->activite, $this->utilisateur);
+        
+        $reservation->setStatut('confirmée');
+        $this->assertEquals('confirmée', $reservation->getStatut(), "La transition en attente -> confirmée a échoué.");
+    
+        $reservation->setStatut('annulée');
+        $this->assertEquals('annulée', $reservation->getStatut(), "La transition confirmée -> annulée a échoué.");
+    
+        $reflection = new ReflectionClass($reservation);
+        $property = $reflection->getProperty('_dateExpiration');
+        $property->setAccessible(true);
+        $property->setValue($reservation, (new DateTime())->modify('-1 day'));
+    
+        $this->assertTrue($reservation->estExpirée(), "La réservation annulée devrait être marquée comme expirée.");
+        $this->assertEquals('expirée', $reservation->getStatut(), "Le statut devrait être 'expirée'.");
+    }
+
+    public function testSetActiviteAvecNouvelleActivite() {
+        $reservation = new Reservation(44, $this->creneau, $this->activite, $this->utilisateur);
+    
+        $nouvelleActivite = $this->createMock(Activite::class);
+        $reservation->setActivite($nouvelleActivite);
+    
+        $this->assertSame($nouvelleActivite, $reservation->getActivite(), "L'activité n'a pas été correctement mise à jour.");
+    }
+
+    public function testAnnulerReservationRetireId() {
+        $reservation = new Reservation(45, $this->creneau, $this->activite, $this->utilisateur);
+        $reservation->setStatut('confirmée');
+    
+        $this->assertContains(45, Reservation::getIds(), "L'ID devrait être dans la liste avant annulation.");
+    
+        $reservation->setStatut('annulée');
+        $this->assertNotContains(45, Reservation::getIds(), "L'ID ne devrait plus être dans la liste après annulation.");
+    }
+
+    public function testConfirmerReservationExpireeDirectement() {
+        $reservation = new Reservation(46, $this->creneau, $this->activite, $this->utilisateur);
+    
+        $reflection = new ReflectionClass($reservation);
+        $property = $reflection->getProperty('_dateExpiration');
+        $property->setAccessible(true);
+        $property->setValue($reservation, (new DateTime())->modify('-1 day'));
+    
+        $this->assertFalse($reservation->confirmerReservation(), "La réservation expirée ne devrait pas pouvoir être confirmée.");
+    }
+
+    public function testIdsUniquesPourGrandNombreDeReservations() {
+        Reservation::reinitialiseIds();
+        $ids = [];
+        for ($i = 1; $i <= 100; $i++) {
+            $reservation = new Reservation($i, $this->creneau, $this->activite, $this->utilisateur);
+            $ids[] = $reservation->getId();
+        }
+    
+        $this->assertCount(100, array_unique($ids), "Les IDs doivent être uniques pour toutes les réservations.");
+    }
+
+    public function testSetStatutAvecPlusieursValeursInvalides() {
+        Reservation::reinitialiseIds();
+        $reservation = new Reservation(47, $this->creneau, $this->activite, $this->utilisateur);
+    
+        $invalidStatuts = ['inconnu', '', null, 123];
+        foreach ($invalidStatuts as $statut) {
+            $this->expectException(InvalidArgumentException::class);
+            $reservation->setStatut($statut);
+        }
+    }
 }

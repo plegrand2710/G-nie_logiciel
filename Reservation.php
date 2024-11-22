@@ -10,7 +10,7 @@ class Reservation {
 
     public function __construct($id, $creneau, $activite, $personne) {
         if (!is_int($id) || $id <= 0) {
-            throw new InvalidArgumentException("L'ID doit être un entier positif.");
+            throw new InvalidArgumentException("L'ID doit être un entier et positif.");
         }
 
         if (in_array($id, self::$_ids)) {
@@ -62,7 +62,10 @@ class Reservation {
     public function getDateExpiration() {
         return $this->_dateExpiration;
     }
-
+    public static function getIds() {
+        return self::$_ids;
+    }
+    
     public function setCreneau($creneau) {
         if (!$creneau instanceof Creneau) {
             throw new InvalidArgumentException("Le créneau doit être une instance de la classe Creneau.");
@@ -107,6 +110,13 @@ class Reservation {
         $this->_statut = $statut;
     }
 
+    public static function setIds($ids) {
+        self::$_ids = $ids;
+    }
+    public static function reinitialiseIds(): void {
+        self::$_ids = [];
+    }
+
     public function estExpirée() {
         $now = new DateTime();
         if ($now > $this->_dateExpiration) {
@@ -135,6 +145,12 @@ class Reservation {
         }
 
         $this->_statut = 'annulée';
+
+        if (($key = array_search($this->_id, self::$_ids)) !== false) {
+            unset(self::$_ids[$key]);
+            self::$_ids = array_values(self::$_ids);
+        }
+    
         return new DateTime();
     }
 }
