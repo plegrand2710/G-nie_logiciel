@@ -1,21 +1,19 @@
 <?php
-
 class Reservation {
-    private static $_idsUtilises = [];
-    private $_id;
-    private $_creneau;
-    private $_activite;
-    private $_utilisateur;
-    private $_statut;
-    private $_dateCreation;
-    private $_dateExpiration;
+    private static $_ids = [];
+    private int $_id;
+    private Creneau $_creneau;
+    private Activite $_activite;
+    private Personne $_personne;
+    private String $_statut;
+    private DateTime $_dateExpiration;
 
-    public function __construct($id, $creneau, $activite, $utilisateur) {
+    public function __construct($id, $creneau, $activite, $personne) {
         if (!is_int($id) || $id <= 0) {
             throw new InvalidArgumentException("L'ID doit être un entier positif.");
         }
 
-        if (in_array($id, self::$_idsUtilises)) {
+        if (in_array($id, self::$_ids)) {
             throw new LogicException("L'ID $id est déjà utilisé par une autre réservation.");
         }
 
@@ -27,22 +25,17 @@ class Reservation {
             throw new InvalidArgumentException("L'activité doit être une instance de la classe Activite.");
         }
 
-        if (!$utilisateur instanceof Utilisateur) {
+        if (!$personne instanceof Utilisateur) {
             throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Utilisateur.");
         }
 
-        if (!$creneau->estCompatibleAvecActivite($activite)) {
-            throw new LogicException("L'activité " . $activite->getNom() . " n'est pas disponible pour le créneau " . $creneau->getPlageHoraire() . ".");
-        }
-
-        self::$_idsUtilises[] = $id;
+        self::$_ids[] = $id;
         $this->_id = $id;
         $this->_creneau = $creneau;
         $this->_activite = $activite;
-        $this->_utilisateur = $utilisateur;
+        $this->_utilisateur = $personne;
         $this->_statut = 'en attente';
-        $this->_dateCreation = new DateTime();
-        $this->_dateExpiration = $this->_dateCreation + 24;
+        $this->_dateExpiration = new DateTime()->modify('+24 hours');
     }
 
     public function getId() {
@@ -57,8 +50,8 @@ class Reservation {
         return $this->_activite;
     }
 
-    public function getUtilisateur() {
-        return $this->_utilisateur;
+    public function getPersonne() {
+        return $this->_personne;
     }
 
     public function getStatut() {
@@ -73,29 +66,20 @@ class Reservation {
         if (!$creneau instanceof Creneau) {
             throw new InvalidArgumentException("Le créneau doit être une instance de la classe Creneau.");
         }
-
-        if (!$creneau->estCompatibleAvecActivite($this->_activite)) {
-            throw new LogicException("Le créneau " . $creneau->getPlageHoraire() . " n'est pas compatible avec l'activité actuelle.");
-        }
-
         $this->_creneau = $creneau;
     }
 
-    public function setUtilisateur($utilisateur) {
-        if (!$utilisateur instanceof Utilisateur) {
+    public function setPersonne($personne) {
+        if (!$personne instanceof Utilisateur) {
             throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Utilisateur.");
         }
 
-        $this->_utilisateur = $utilisateur;
+        $this->_personne = $personne;
     }
 
     public function setActivite($activite) {
         if (!$activite instanceof Activite) {
             throw new InvalidArgumentException("L'activité doit être une instance de la classe Activite.");
-        }
-
-        if (!$this->_creneau->estCompatibleAvecActivite($activite)) {
-            throw new LogicException("L'activité " . $activite->getNom() . " n'est pas compatible avec le créneau actuel.");
         }
 
         $this->_activite = $activite;
@@ -107,91 +91,36 @@ class Reservation {
             throw new InvalidArgumentException("Le statut doit être l'un des suivants : " . implode(', ', $statutsValides));
         }
 
-        if ($statut === 'annulée' && $this->_statut === 'en attente') {
-            throw new LogicException("Une réservation en attente ne peut pas être annulée.");
-        }
-
         if ($statut === 'confirmée' && $this->_statut === 'en attente') {
-            $this->_creneau->marquerOccupe();
+            $this->confirmerReservation();
         }
 
         if ($statut === 'annulée') {
-            $this->_creneau->liberer();
+            $this->annulerReservation();
         }
 
         $this->_statut = $statut;
     }
 
-    public function setDateExpiration($dateExpiration) {
-        if (!$dateExpiration instanceof DateTime) {
-            throw new InvalidArgumentException("La date d'expiration doit être une instance de la classe DateTime.");
-        }
-
-        if ($dateExpiration < $this->_dateCreation) {
-            throw new LogicException("La date d'expiration ne peut pas être antérieure à la date de création.");
-        }
-
-        $this->_dateExpiration = $dateExpiration;
-    }
-
-    public function verifierExpiration() {
+    public function estExpirée() {
         $now = new DateTime();
-        if ($now > $this->_dateExpiration && $this->_statut === 'en attente') {
+        if ($now > $this->_dateExpiration) {
             $this->_statut = 'expirée';
             return true;
         }
         return false;
     }
 
-    public function payerReservation() {
-        if ($this->_statut !== 'en attente') {
-            throw new LogicException("La réservation doit être en attente pour être payée.");
-        }
-
-        if (!$this->_activite->validerPaiement($this->_activite->getMontant())) {
-            throw new InvalidArgumentException("Le paiement est incorrect.");
-            return false ;
-        }
-
-        $this->_statut = 'confirmée';
-        $this->_creneau->marquerOccupe();
-        return true ;
-    }
-
-    public function mettreAJourEtatReservation($confirmation) {
-        if($confirmation){
-            $now = new DateTime();
-            if ($now > $this->_dateExpiration && $this->_statut === 'en attente') {
-                $this->_statut = 'expirée';
-                $this->_creneau->liberer();
-            }
-        }
-        else{
-            throw new LogicException("La réservation n'est pas confirmée");
-        }
-    }
-
     public function confirmerReservation() {
-        if (!$this->_utilisateur->aPayeCotisation()) {
-            return false;
-        }
-    
-        if (!$this->_activite->estPayee()) {
-            return false;
-        }
-    
-        if (!$this->_creneau->estDisponible()) {
-            return false;
-        }
-    
         if ($this->_statut !== 'en attente') {
             return false;
         }
     
-        if ($this->verifierExpiration()) {
+        if ($this->estExpirée()) {
             return false;
         }
-    
+
+        $this->_statut !== 'confirmée';
         return true;
     }
 
