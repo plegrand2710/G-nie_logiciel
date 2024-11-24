@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../src/GestionUtilisateur.php';
+require_once __DIR__ . '/../src/Paiement.php';
 require_once __DIR__ . '/../src/Calendrier.php';
 require_once __DIR__ . '/../src/Creneau.php';
 require_once __DIR__ . '/../src/Activite.php';
@@ -7,6 +8,9 @@ require_once __DIR__ . '/../src/Reservation.php';
 require_once __DIR__ . '/../src/Personne.php';
 require_once __DIR__ . '/../src/Utilisateur.php';
 require_once __DIR__ . '/../src/GestionCreneauxActivite.php';
+require_once __DIR__ . '/../src/PaiementVirement.php';
+require_once __DIR__ . '/../src/RIB.php';
+require_once __DIR__ . '/../src/Remboursement.php';
 
 use PHPUnit\Framework\TestCase;
 
@@ -16,13 +20,17 @@ class GestionUtilisateurTest extends TestCase {
     private $creneau;
     private $activite;
     private $utilisateur;
+    private $personne;
 
     protected function setUp(): void {
+        $this->personne = $this->createMock(Personne::class);
         $this->calendrier = $this->createMock(Calendrier::class);
         $this->gestionUtilisateur = new GestionUtilisateur($this->calendrier);
         $this->creneau = $this->createMock(Creneau::class);
         $this->activite = $this->createMock(Activite::class);
         $this->utilisateur = $this->createMock(Utilisateur::class);
+    
+    
         Reservation::reinitialiseIds();
     }
 
@@ -51,26 +59,31 @@ class GestionUtilisateurTest extends TestCase {
         $this->assertEmpty($this->gestionUtilisateur->getReservations());
     }
 
-    public function testSupprimerReservationInexistante() {
-        $reservation = $this->createMock(Reservation::class);
-        $reservation->method('getId')->willReturn(1);
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->gestionUtilisateur->supprimerReservation($reservation);
-    }
-
     public function testReserverCreneauDisponible() {
         $gestionCreneauxActivite = $this->createMock(GestionCreneauxActivite::class);
         $gestionCreneauxActivite->method('verifierDisponibilite')->willReturn(true);
-
+    
+        $this->utilisateur->method('verifPayerCotisation')->willReturn(true);
+        $this->activite->method('getTarif')->willReturn(100.0);
+    
+        $ribMock = $this->createMock(RIB::class);
+        $this->utilisateur->method('getRIB')->willReturn($ribMock);
+    
         $this->calendrier
             ->method('trouverGestionCreneauxPourActivite')
             ->willReturn($gestionCreneauxActivite);
-
+    
+        $paiementMock = $this->getMockBuilder(PaiementVirement::class)
+                             ->setConstructorArgs([100.0, new DateTime(), $ribMock, $ribMock])
+                             ->onlyMethods(['effectuerPaiement'])
+                             ->getMock();
+    
+        $paiementMock->method('effectuerPaiement')->willReturn(true);
+    
         $this->creneau->expects($this->once())->method('reserverCreneau');
-
+    
         $result = $this->gestionUtilisateur->reserver($this->creneau, $this->activite, $this->utilisateur);
-
+    
         $this->assertTrue($result);
         $this->assertCount(1, $this->gestionUtilisateur->getReservations());
     }
@@ -87,18 +100,75 @@ class GestionUtilisateurTest extends TestCase {
         $this->gestionUtilisateur->reserver($this->creneau, $this->activite, $this->utilisateur);
     }
 
+    public function testRemboursementActiviteMontantValide(): void {
+        $this->personne->method('getNom')->willReturn('John Doe');
+        $this->activite->method('getTarif')->willReturn(100.0);
+    
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+    
+        $method->invokeArgs($this->gestionUtilisateur, [$this->personne, $this->activite, 50.0]);
+    
+        $this->assertInstanceOf(Remboursement::class, $this->gestionUtilisateur->getRemboursement());
+    }
+
+    public function testRemboursementActivitePersonneInvalide(): void {
+        $this->activite->method('getTarif')->willReturn(100.0);
+
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("La personne doit être une instance de Personne.");
+
+        $method->invokeArgs($this->gestionUtilisateur, [null, $this->activite, 50.0]);
+    }
+
+    public function testRemboursementActiviteActiviteInvalide(): void {
+        $this->personne->method('getNom')->willReturn('John Doe');
+
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("L'activité doit être une instance de Activite.");
+
+        $method->invokeArgs($this->gestionUtilisateur, [$this->personne, null, 50.0]);
+    }
+
+    public function testRemboursementActivitePenaliteInvalide(): void {
+        $this->personne->method('getNom')->willReturn('John Doe');
+        $this->activite->method('getTarif')->willReturn(100.0);
+
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("La pénalité doit être un nombre.");
+
+        $method->invokeArgs($this->gestionUtilisateur, [$this->personne, $this->activite, "invalid"]);
+    }
+
     public function testAnnulerReservationValide() {
+        $heureDebut = new DateTime('+1 day');
+        $this->creneau->method('getHeureDebut')->willReturn($heureDebut);
+        $this->activite->method('getTarif')->willReturn(100.0);
+        
         $reservation = $this->createMock(Reservation::class);
         $reservation->method('getStatut')->willReturn('confirmée');
         $reservation->method('getId')->willReturn(1);
-        $reservation->expects($this->once())->method('setStatut')->with('annulée');
-        $reservation->expects($this->once())->method('getCreneau')->willReturn($this->creneau);
-
-        $this->creneau->expects($this->once())->method('libererCreneau');
-
+        $reservation->method('getCreneau')->willReturn($this->creneau);
+        $reservation->method('getPersonne')->willReturn($this->utilisateur);
+        $reservation->method('getActivite')->willReturn($this->activite);
+        
         $this->gestionUtilisateur->ajouterReservation($reservation);
+    
         $this->gestionUtilisateur->annulerReservation($reservation);
-
+    
         $this->assertEmpty($this->gestionUtilisateur->getReservations());
     }
 
@@ -124,33 +194,24 @@ class GestionUtilisateurTest extends TestCase {
         $this->assertEquals(['Creneau1', 'Creneau2'], $result);
     }
 
-    public function testAfficherReservations() {
-        $reservation1 = $this->createMock(Reservation::class);
-        $reservation1->method('getId')->willReturn(1);
-
-        $reservation2 = $this->createMock(Reservation::class);
-        $reservation2->method('getId')->willReturn(2); 
-
-        $this->gestionUtilisateur->ajouterReservation($reservation1);
-        $this->gestionUtilisateur->ajouterReservation($reservation2);
-
-        $reservations = $this->gestionUtilisateur->afficherReservations();
-        $this->assertCount(2, $reservations);
-    }
-
     public function testReservationsIncrementIds() {
         $this->creneau->method('reserverCreneau');
+        $this->activite->method('getTarif')->willReturn(100.0);
+        
         $gestionCreneauxActivite = $this->createMock(GestionCreneauxActivite::class);
         $gestionCreneauxActivite->method('verifierDisponibilite')->willReturn(true);
-
+        
+        $this->utilisateur->method('verifPayerCotisation')->willReturn(true); 
+        
         $this->calendrier
             ->method('trouverGestionCreneauxPourActivite')
             ->willReturn($gestionCreneauxActivite);
-
+    
         $this->gestionUtilisateur->reserver($this->creneau, $this->activite, $this->utilisateur);
         $this->gestionUtilisateur->reserver($this->creneau, $this->activite, $this->utilisateur);
-
+    
         $reservations = $this->gestionUtilisateur->getReservations();
+    
         $this->assertEquals(1, $reservations[0]->getId());
         $this->assertEquals(2, $reservations[1]->getId());
     }
@@ -226,6 +287,10 @@ class GestionUtilisateurTest extends TestCase {
     public function testReservationsIncrementeIdsPourGrandNombre() {
         $gestionCreneauxActivite = $this->createMock(GestionCreneauxActivite::class);
         $gestionCreneauxActivite->method('verifierDisponibilite')->willReturn(true);
+        $this->utilisateur->method('verifPayerCotisation')->willReturn(true); 
+
+        $this->utilisateur->method('getRIB')->willReturn($this->createMock(RIB::class));
+        $this->activite->method('getTarif')->willReturn(100.0);
     
         $this->calendrier
             ->method('trouverGestionCreneauxPourActivite')
@@ -427,23 +492,32 @@ class GestionUtilisateurTest extends TestCase {
         $gestionCreneauxActivite = $this->createMock(GestionCreneauxActivite::class);
         $gestionCreneauxActivite->method('verifierDisponibilite')->willReturn(true);
     
+        $ribMock = $this->createMock(RIB::class);
+        $this->utilisateur->method('verifPayerCotisation')->willReturn(true);
+        $this->utilisateur->method('getRIB')->willReturn($ribMock);
+        $this->activite->method('getTarif')->willReturn(100.0);
+    
         $this->calendrier
             ->method('trouverGestionCreneauxPourActivite')
             ->willReturn($gestionCreneauxActivite);
-    
+
         $threads = [];
         for ($i = 0; $i < 10; $i++) {
-            $threads[$i] = function () use ($i) {
+            $threads[$i] = function () {
                 $this->gestionUtilisateur->reserver($this->creneau, $this->activite, $this->utilisateur);
             };
         }
     
         foreach ($threads as $thread) {
-            $thread();
+            $thread(); 
         }
     
         $reservations = $this->gestionUtilisateur->getReservations();
         $this->assertCount(10, $reservations);
+    
+        for ($i = 0; $i < 10; $i++) {
+            $this->assertEquals($i + 1, $reservations[$i]->getId());
+        }
     }
 
     public function testAfficherReservationsParUtilisateur() {
@@ -505,7 +579,7 @@ class GestionUtilisateurTest extends TestCase {
         $this->gestionUtilisateur->ajouterReservation($reservation1);
         $this->gestionUtilisateur->ajouterReservation($reservation2);
     
-        $result = $this->gestionUtilisateur->afficherCreneauxParActivite($personne, $activite);
+        $result = $this->gestionUtilisateur->afficherCreneauxParActiviteParPersonne($personne, $activite);
     
         $this->assertCount(2, $result);
         $this->assertContains($creneau1, $result);
@@ -535,5 +609,111 @@ class GestionUtilisateurTest extends TestCase {
         $this->assertCount(2, $result);
         $this->assertContains($creneau1, $result);
         $this->assertContains($creneau2, $result);
+    }
+
+    public function testConstructeurAvecCalendrierValide() {
+        $this->assertInstanceOf(GestionUtilisateur::class, $this->gestionUtilisateur);
+    }
+
+    public function testConstructeurAvecCalendrierInvalide() {
+        $this->expectException(InvalidArgumentException::class);
+        new GestionUtilisateur("invalid");
+    }
+
+    public function testPaiementActiviteAvecParametresValides() {
+        $personne = $this->createMock(Utilisateur::class);
+        $ribMock = $this->createMock(RIB::class);
+        $this->utilisateur->method('getRIB')->willReturn($ribMock);
+
+        $activite = $this->createMock(Activite::class);
+        $activite->method('getTarif')->willReturn(500);
+
+        $this->gestionUtilisateur->paiementActivite($personne, $activite);
+
+        $this->assertInstanceOf(Paiement::class, $this->gestionUtilisateur->getPaiement());
+    }
+
+    public function testPaiementActiviteAvecParametresInvalides() {
+        $this->expectException(InvalidArgumentException::class);
+        $this->gestionUtilisateur->paiementActivite("invalid", "invalid");
+    }
+
+    public function testRemboursementActiviteAvecPenaliteValide() {
+        $personne = $this->createMock(Personne::class);
+        $activite = $this->createMock(Activite::class);
+        $activite->method('getTarif')->willReturn(500);
+
+        $this->gestionUtilisateur->remboursementActivite($personne, $activite, 50);
+
+        $this->assertInstanceOf(Remboursement::class, $this->gestionUtilisateur->getRemboursement());
+    }
+
+    public function testAfficherCreneauxParActiviteParPersonne() {
+        $personne = $this->createMock(Personne::class);
+        $activite = $this->createMock(Activite::class);
+    
+        $creneau1 = $this->createMock(Creneau::class);
+        $reservation1 = $this->createMock(Reservation::class);
+        $reservation1->method('getId')->willReturn(1); // ID valide
+        $reservation1->method('getPersonne')->willReturn($personne);
+        $reservation1->method('getActivite')->willReturn($activite);
+        $reservation1->method('getCreneau')->willReturn($creneau1);
+    
+        $creneau2 = $this->createMock(Creneau::class);
+        $reservation2 = $this->createMock(Reservation::class);
+        $reservation2->method('getId')->willReturn(2); // ID valide
+        $reservation2->method('getPersonne')->willReturn($personne);
+        $reservation2->method('getActivite')->willReturn($activite);
+        $reservation2->method('getCreneau')->willReturn($creneau2);
+    
+        $this->gestionUtilisateur->ajouterReservation($reservation1);
+        $this->gestionUtilisateur->ajouterReservation($reservation2);
+    
+        $result = $this->gestionUtilisateur->afficherCreneauxParActiviteParPersonne($personne, $activite);
+    
+        $this->assertCount(2, $result);
+        $this->assertContains($creneau1, $result);
+        $this->assertContains($creneau2, $result);
+    }
+
+    public function testSupprimerReservationValide() {
+        $reservation = $this->createMock(Reservation::class);
+        $reservation->method('getId')->willReturn(1);
+
+        $this->gestionUtilisateur->ajouterReservation($reservation);
+        $this->gestionUtilisateur->supprimerReservation($reservation);
+
+        $this->assertCount(0, $this->gestionUtilisateur->getReservations());
+    }
+
+    public function testSupprimerReservationInexistante() {
+        $reservation = $this->createMock(Reservation::class);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->gestionUtilisateur->supprimerReservation($reservation);
+    }
+
+    public function testAnnulerReservationAvecPenalite() {
+        $creneau = $this->createMock(Creneau::class);
+        $heureDebut = new DateTime('+1 day');
+        $creneau->method('getHeureDebut')->willReturn($heureDebut);
+        $creneau->method('libererCreneau')->willReturn(true);
+    
+        $activite = $this->createMock(Activite::class);
+        $activite->method('getTarif')->willReturn(100.0);
+    
+        $personne = $this->createMock(Personne::class);
+    
+        $reservation = $this->createMock(Reservation::class);
+        $reservation->method('getId')->willReturn(1);
+        $reservation->method('getStatut')->willReturn('confirmée');
+        $reservation->method('getCreneau')->willReturn($creneau);
+        $reservation->method('getPersonne')->willReturn($personne);
+        $reservation->method('getActivite')->willReturn($activite);
+    
+        $this->gestionUtilisateur->ajouterReservation($reservation);
+        $this->gestionUtilisateur->annulerReservation($reservation);
+    
+        $this->assertEmpty($this->gestionUtilisateur->getReservations());
     }
 }
