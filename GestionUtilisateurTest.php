@@ -11,6 +11,7 @@ require_once __DIR__ . '/../src/GestionCreneauxActivite.php';
 require_once __DIR__ . '/../src/PaiementVirement.php';
 require_once __DIR__ . '/../src/RIB.php';
 require_once __DIR__ . '/../src/Remboursement.php';
+require_once __DIR__ . '/../src/Moderateur.php';
 
 use PHPUnit\Framework\TestCase;
 
@@ -188,57 +189,81 @@ class GestionUtilisateurTest extends TestCase {
         $this->gestionUtilisateur->reserver($this->creneau, $this->activite, $this->utilisateur);
     }
 
-    public function testRemboursementActiviteMontantValide(): void {
-        $this->personne->method('getNom')->willReturn('John Doe');
-        $this->activite->method('getTarif')->willReturn(100.0);
+    public function testRemboursementActiviteMontantValideParUtilisateur() {
+        $personne = $this->createMock(Utilisateur::class);
+        $activite = $this->createMock(Activite::class);
+    
+        $personne->method('getRIB')->willReturn($this->createMock(RIB::class));
+        $activite->method('getTarif')->willReturn(100.0);
     
         $reflection = new ReflectionClass($this->gestionUtilisateur);
         $method = $reflection->getMethod('remboursementActivite');
         $method->setAccessible(true);
     
-        $method->invokeArgs($this->gestionUtilisateur, [$this->personne, $this->activite, 50.0]);
+        $method->invokeArgs($this->gestionUtilisateur, [$personne, $activite, 10.0]);
     
-        $this->assertInstanceOf(Remboursement::class, $this->gestionUtilisateur->getRemboursement());
+        $remboursement = $this->gestionUtilisateur->getRemboursement();
+        $this->assertInstanceOf(Remboursement::class, $remboursement);
+        $this->assertEquals(90.0, $remboursement->getMontant());
+    }
+    
+    public function testRemboursementActiviteMontantValideParModerateur() {
+        $personne = $this->createMock(Moderateur::class);
+        $activite = $this->createMock(Activite::class);
+    
+        $activite->method('getTarif')->willReturn(100.0);
+    
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("La personne doit être une instance de Utilisateur.");
+    
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+    
+        $method->invokeArgs($this->gestionUtilisateur, [$personne, $activite, 10.0]);
     }
 
-    public function testRemboursementActivitePersonneInvalide(): void {
-        $this->activite->method('getTarif')->willReturn(100.0);
-
+    public function testRemboursementActivitePersonneInvalide() {
+        $personne = $this->createMock(Moderateur::class);
+        $activite = $this->createMock(Activite::class);
+    
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("La personne doit être une instance de Utilisateur.");
+    
         $reflection = new ReflectionClass($this->gestionUtilisateur);
         $method = $reflection->getMethod('remboursementActivite');
         $method->setAccessible(true);
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage("La personne doit être une instance de Personne.");
-
-        $method->invokeArgs($this->gestionUtilisateur, [null, $this->activite, 50.0]);
+    
+        $method->invokeArgs($this->gestionUtilisateur, [$personne, $activite, 10.0]);
     }
 
     public function testRemboursementActiviteActiviteInvalide(): void {
-        $this->personne->method('getNom')->willReturn('John Doe');
-
+        $utilisateur = $this->createMock(Utilisateur::class);
+        $utilisateur->method('getNom')->willReturn('John Doe');
+    
         $reflection = new ReflectionClass($this->gestionUtilisateur);
         $method = $reflection->getMethod('remboursementActivite');
         $method->setAccessible(true);
-
+    
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("L'activité doit être une instance de Activite.");
-
-        $method->invokeArgs($this->gestionUtilisateur, [$this->personne, null, 50.0]);
+    
+        $method->invokeArgs($this->gestionUtilisateur, [$utilisateur, null, 50.0]);
     }
 
     public function testRemboursementActivitePenaliteInvalide(): void {
-        $this->personne->method('getNom')->willReturn('John Doe');
+        $utilisateur = $this->createMock(Utilisateur::class);
+        $utilisateur->method('getNom')->willReturn('John Doe');
         $this->activite->method('getTarif')->willReturn(100.0);
-
+    
         $reflection = new ReflectionClass($this->gestionUtilisateur);
         $method = $reflection->getMethod('remboursementActivite');
         $method->setAccessible(true);
-
+    
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("La pénalité doit être un nombre.");
-
-        $method->invokeArgs($this->gestionUtilisateur, [$this->personne, $this->activite, "invalid"]);
+    
+        $method->invokeArgs($this->gestionUtilisateur, [$utilisateur, $this->activite, "invalid"]);
     }
 
     public function testAnnulerReservationValide() {
@@ -746,14 +771,41 @@ class GestionUtilisateurTest extends TestCase {
         $this->gestionUtilisateur->paiementActivite("invalid", "invalid");
     }
 
-    public function testRemboursementActiviteAvecPenaliteValide() {
-        $personne = $this->createMock(Personne::class);
+    public function testRemboursementActiviteAvecPenaliteValideParUtilisateur() {
+        $personne = $this->createMock(Utilisateur::class);
         $activite = $this->createMock(Activite::class);
-        $activite->method('getTarif')->willReturn(500);
-
-        $this->gestionUtilisateur->remboursementActivite($personne, $activite, 50);
-
-        $this->assertInstanceOf(Remboursement::class, $this->gestionUtilisateur->getRemboursement());
+    
+        // Mock necessary methods
+        $personne->method('getRIB')->willReturn($this->createMock(RIB::class));
+        $activite->method('getTarif')->willReturn(200.0);
+    
+        // Reflection to access the private method
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+    
+        // Invoke with penalty
+        $method->invokeArgs($this->gestionUtilisateur, [$personne, $activite, 50.0]);
+    
+        $remboursement = $this->gestionUtilisateur->getRemboursement();
+        $this->assertInstanceOf(Remboursement::class, $remboursement);
+        $this->assertEquals(150.0, $remboursement->getMontant());
+    }
+    
+    public function testRemboursementActiviteAvecPenaliteValideParModerateur() {
+        $personne = $this->createMock(Moderateur::class);
+        $activite = $this->createMock(Activite::class);
+    
+        $activite->method('getTarif')->willReturn(200.0);
+    
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("La personne doit être une instance de Utilisateur.");
+    
+        $reflection = new ReflectionClass($this->gestionUtilisateur);
+        $method = $reflection->getMethod('remboursementActivite');
+        $method->setAccessible(true);
+    
+        $method->invokeArgs($this->gestionUtilisateur, [$personne, $activite, 50.0]);
     }
 
     public function testAfficherCreneauxParActiviteParPersonne() {
@@ -762,14 +814,14 @@ class GestionUtilisateurTest extends TestCase {
     
         $creneau1 = $this->createMock(Creneau::class);
         $reservation1 = $this->createMock(Reservation::class);
-        $reservation1->method('getId')->willReturn(1); // ID valide
+        $reservation1->method('getId')->willReturn(1);
         $reservation1->method('getPersonne')->willReturn($personne);
         $reservation1->method('getActivite')->willReturn($activite);
         $reservation1->method('getCreneau')->willReturn($creneau1);
     
         $creneau2 = $this->createMock(Creneau::class);
         $reservation2 = $this->createMock(Reservation::class);
-        $reservation2->method('getId')->willReturn(2); // ID valide
+        $reservation2->method('getId')->willReturn(2);
         $reservation2->method('getPersonne')->willReturn($personne);
         $reservation2->method('getActivite')->willReturn($activite);
         $reservation2->method('getCreneau')->willReturn($creneau2);

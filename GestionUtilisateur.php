@@ -169,7 +169,7 @@ class GestionUtilisateur {
         $creneau->libererCreneau();
         $reservation->annulerReservation();
 
-        if ($reservation->getStatut() == 'confirmée') {
+        if ($reservation->getStatut() == 'confirmée' && $reservation->getPersonne() instanceof Utilisateur) {
             $penalite = $this->calculerPenalite($reservation);
             $this->remboursementActivite($reservation->getPersonne(), $reservation->getActivite(), $penalite);
         } 
@@ -192,8 +192,8 @@ class GestionUtilisateur {
     }
 
     public function remboursementActivite($personne, $activite, $penalite): void {
-        if (!($personne instanceof Personne)) {
-            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
+        if (!($personne instanceof Utilisateur)) {
+            throw new InvalidArgumentException("La personne doit être une instance de Utilisateur.");
         }
 
         if (!($activite instanceof Activite)) {
