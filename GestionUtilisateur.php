@@ -120,7 +120,10 @@ class GestionUtilisateur {
             $personne
         );
 
-        $this->paiementActivite($personne, $activite);
+        if ($personne instanceof Utilisateur) {
+            $this->paiementActivite($personne, $activite);
+        }
+
 
         if (!$reservation->confirmerReservation()) {
             throw new LogicException("La réservation n'a pas pu être confirmée.");
@@ -132,7 +135,7 @@ class GestionUtilisateur {
     }
 
     public function paiementActivite($personne, $activite) {
-        if (!($personne instanceof Personne)) {
+        if (!($personne instanceof Utilisateur)) {
             throw new InvalidArgumentException("La personne doit être une instance de Personne.");
         }
 
@@ -203,7 +206,7 @@ class GestionUtilisateur {
 
         $this->_remboursement = new Remboursement(new DateTime(), $activite->getTarif(), $penalite);
 
-        if (!$this->_remboursement->effectuerRemboursement()) {
+        if (!$this->_remboursement->effectuerPaiement()) {
             throw new LogicException("Le remboursement a échoué.");
         }
     }
