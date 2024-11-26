@@ -1,0 +1,176 @@
+DROP TABLE IF EXISTS recoit;
+DROP TABLE IF EXISTS ferme;
+DROP TABLE IF EXISTS Fermeture;
+DROP TABLE IF EXISTS Notification;
+DROP TABLE IF EXISTS Remboursement;
+DROP TABLE IF EXISTS Reservation;
+DROP TABLE IF EXISTS Creneau;
+DROP TABLE IF EXISTS Activite;
+DROP TABLE IF EXISTS Cotisation;
+DROP TABLE IF EXISTS Paiement;
+DROP TABLE IF EXISTS RIBEntreprise;
+DROP TABLE IF EXISTS RIB;
+DROP TABLE IF EXISTS Moderateur;
+DROP TABLE IF EXISTS Utilisateur;
+DROP TABLE IF EXISTS Calendrier;
+DROP TABLE IF EXISTS Personne;
+
+
+CREATE TABLE Personne (
+    idPersonne INT PRIMARY KEY AUTO_INCREMENT,
+    nom VARCHAR(100) NOT NULL,
+    identifiant VARCHAR(100) NOT NULL UNIQUE,
+    mdp VARCHAR(255) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    numTel VARCHAR(15),
+    type ENUM('Utilisateur', 'Moderateur') NOT NULL
+);
+
+CREATE TABLE Utilisateur (
+    idUtilisateur INT PRIMARY KEY AUTO_INCREMENT,
+    cotisation_active BOOLEAN NOT NULL,
+    idPersonne INT NOT NULL,
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne)
+);
+
+CREATE TABLE Moderateur (
+    idModerateur INT PRIMARY KEY AUTO_INCREMENT,
+    idPersonne INT NOT NULL,
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne)
+);
+
+CREATE TABLE RIB (
+    idRIB INT PRIMARY KEY AUTO_INCREMENT,
+    numero_compte BIGINT NOT NULL,
+    code_guichet INT NOT NULL,
+    cle INT NOT NULL,
+    code_iban VARCHAR(34) NOT NULL UNIQUE,
+    titulaire_nom VARCHAR(100) NOT NULL,
+    titulaire_prenom VARCHAR(100) NOT NULL,
+    identifiant_rib VARCHAR(100) UNIQUE,
+    idUtilisateur INT NOT NULL,
+    FOREIGN KEY (idUtilisateur) REFERENCES Utilisateur(idUtilisateur)
+);
+
+CREATE TABLE RIBEntreprise (
+    idRIBEntreprise INT PRIMARY KEY AUTO_INCREMENT,
+    numero_compte BIGINT NOT NULL,
+    code_guichet INT NOT NULL,
+    cle INT NOT NULL,
+    code_iban VARCHAR(34) NOT NULL UNIQUE,
+    titulaire_nom VARCHAR(100) NOT NULL,
+    titulaire_prenom VARCHAR(100) NOT NULL,
+    identifiant_rib VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE Paiement (
+    idPaiement INT PRIMARY KEY AUTO_INCREMENT,
+    montant FLOAT NOT NULL,
+    date_paiement DATETIME NOT NULL,
+    idRIB INT NOT NULL,
+    idRIBEntreprise INT NOT NULL,
+    FOREIGN KEY (idRIB) REFERENCES RIB(idRIB),
+    FOREIGN KEY (idRIBEntreprise) REFERENCES RIBEntreprise(idRIBEntreprise)
+);
+
+CREATE TABLE Cotisation (
+    idCotisation INT PRIMARY KEY AUTO_INCREMENT,
+    montant FLOAT NOT NULL,
+    date_paiement DATE NOT NULL,
+    date_fin DATE NOT NULL,
+    idUtilisateur INT NOT NULL,
+    idPaiement INT,
+    FOREIGN KEY (idUtilisateur) REFERENCES Utilisateur(idUtilisateur),
+    FOREIGN KEY (idPaiement) REFERENCES Paiement(idPaiement)
+);
+
+CREATE TABLE Activite (
+    idActivite INT PRIMARY KEY AUTO_INCREMENT,
+    nom VARCHAR(100) NOT NULL,
+    tarif FLOAT NOT NULL,
+    duree TIME NOT NULL
+);
+
+CREATE TABLE Creneau (
+    idCreneau INT PRIMARY KEY AUTO_INCREMENT,
+    date DATE NOT NULL,
+    heure_debut TIME NOT NULL,
+    heure_fin TIME NOT NULL,
+    reserve BOOLEAN NOT NULL
+);
+
+CREATE TABLE Calendrier (
+    idCalendrier INT PRIMARY KEY AUTO_INCREMENT,
+    horaire_ouverture TIME NOT NULL,
+    horaire_fermeture TIME NOT NULL
+);
+
+CREATE TABLE Reservation (
+    idReservation INT PRIMARY KEY AUTO_INCREMENT,
+    statut ENUM('confirmée', 'annulée', 'en attente', 'expirée') NOT NULL,
+    date_reservation DATETIME NOT NULL,
+    idPersonne INT NOT NULL,
+    idCreneau INT NOT NULL,
+    idActivite INT NOT NULL,
+    idCalendrier INT,
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne),
+    FOREIGN KEY (idCreneau) REFERENCES Creneau(idCreneau),
+    FOREIGN KEY (idActivite) REFERENCES Activite(idActivite),
+    FOREIGN KEY (idCalendrier) REFERENCES Calendrier(idCalendrier)
+);
+
+CREATE TABLE Remboursement (
+    idRemboursement INT PRIMARY KEY AUTO_INCREMENT,
+    montant FLOAT NOT NULL,
+    date_remboursement DATETIME NOT NULL,
+    idReservation INT NOT NULL,
+    idPaiement INT NOT NULL,
+    FOREIGN KEY (idReservation) REFERENCES Reservation(idReservation),
+    FOREIGN KEY (idPaiement) REFERENCES Paiement(idPaiement)
+);
+
+CREATE TABLE Notification (
+    idNotification INT PRIMARY KEY AUTO_INCREMENT,
+    message TEXT NOT NULL,
+    type ENUM('Email', 'SMS', 'Application') NOT NULL,
+    date_envoi DATE NOT NULL
+);
+
+CREATE TABLE Fermeture (
+    idFermeture INT PRIMARY KEY AUTO_INCREMENT,
+    dateJour DATE NOT NULL
+);
+
+CREATE TABLE recoit (
+    idPersonne INT NOT NULL,
+    idNotification INT NOT NULL,
+    PRIMARY KEY (idPersonne, idNotification),
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne),
+    FOREIGN KEY (idNotification) REFERENCES Notification(idNotification)
+);
+
+CREATE TABLE ferme (
+    idFermeture INT NOT NULL,
+    idCalendrier INT NOT NULL,
+    PRIMARY KEY (idFermeture, idCalendrier),
+    FOREIGN KEY (idFermeture) REFERENCES Fermeture(idFermeture),
+    FOREIGN KEY (idCalendrier) REFERENCES Calendrier(idCalendrier)
+);
+
+/*
+--Personne (idPersonne, nom, identifiant, mdp, email, numTel, type)  
+--Utilisateur (idUtilisateur, cotisation_active, #idpersonne)  
+--Moderateur (idModerateur, #idpersonne)  
+--RIB (idRIB, numero_compte, code_guichet, cle, code_iban, titulaire_nom, titulaire_prenom, identifiant_rib, #idUtilisateur)  
+--RIBEntreprise (idRIBEntreprise, numero_compte, code_guichet, cle, code_iban, titulaire_nom, titulaire_prenom, identifiant_rib)  
+--Cotisation (idCotisation, montant, date_paiement, date_fin, #idUtilisateur, #idpaiement)  
+--Activite (idActivite, nom, tarif, duree)  
+--Creneau (idCreneau, date, heure_debut, heure_fin, reserve)  
+--Reservation (idReservation, statut, date_reservation, #idPersonne, #idCreneau, #idActivite, #idCalendrier)  
+--Paiement (idPaiement, montant, date_paiement, #idRIB, #idRIBEntreprise)  
+--Remboursement (idRemboursement, montant, date_remboursement, #idreservation, #idpaiement)  
+--Notification (idNotification, message, type, date_envoi)  
+--Calendrier (idCalendrier, horaire_ouverture, horaire_fermeture)  
+--Fermeture (idFermeture, dateJour)  
+--reçoit (#idPersonne, #idNotification)  
+--ferme (#idFermeture, #idCalendrier) */
