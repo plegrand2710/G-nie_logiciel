@@ -1,0 +1,55 @@
+<?php
+require_once __DIR__ . '/../src/Personne.php';
+require_once __DIR__ . '/../src/Utilisateur.php';
+require_once __DIR__ . '/../src/Moderateur.php';
+
+use PHPUnit\Framework\TestCase;
+
+class ModerateurTest extends TestCase {
+    private $dbConnection;
+
+    protected function setUp(): void {
+        $this->dbConnection = $this->createMock(PDO::class);
+    }
+
+    public function testSupprimerUtilisateurSuccess() {
+        $moderateur = new Moderateur("John", "mod1", "password123", "john@example.com", "123456789");
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->expects($this->once())->method('execute')->willReturn(true);
+
+        $this->dbConnection->expects($this->once())
+            ->method('prepare')
+            ->with("DELETE FROM Utilisateur WHERE id = :id")
+            ->willReturn($stmt);
+
+        $this->assertTrue($moderateur->supprimerutilisateur(1, $this->dbConnection));
+    }
+
+    public function testSupprimerUtilisateurFailure() {
+        $moderateur = new Moderateur("Jane", "mod2", "password456", "jane@example.com", "987654321");
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->expects($this->once())->method('execute')->willReturn(false);
+
+        $this->dbConnection->expects($this->once())
+            ->method('prepare')
+            ->with("DELETE FROM Utilisateur WHERE id = :id")
+            ->willReturn($stmt);
+
+        $this->assertFalse($moderateur->supprimerutilisateur(999, $this->dbConnection));
+    }
+
+    public function testSupprimerUtilisateurException() {
+        $moderateur = new Moderateur("Jack", "mod3", "password789", "jack@example.com", "111222333");
+
+        $this->dbConnection->expects($this->once())
+            ->method('prepare')
+            ->will($this->throwException(new PDOException("Database error")));
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Erreur lors de la suppression : Database error");
+
+        $moderateur->supprimerutilisateur(1, $this->dbConnection);
+    }
+}
