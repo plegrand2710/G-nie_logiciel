@@ -1,0 +1,112 @@
+<?php
+use PHPUnit\Framework\TestCase;
+
+class PersonneTest extends TestCase {
+
+    public function testConstructorValid() {
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+
+        $this->assertEquals("John Doe", $personne->getNom());
+        $this->assertEquals("john123", $personne->getId());
+        $this->assertEquals("password123", $personne->getMdp());
+        $this->assertEquals("john@example.com", $personne->getEmail());
+        $this->assertEquals("123456789", $personne->getNumTel());
+    }
+
+    public function testConstructorInvalidNom() {
+        $this->expectException(InvalidArgumentException::class);
+        new Personne(12345, "john123", "password123", "john@example.com", "123456789");
+    }
+
+    public function testConstructorInvalidId() {
+        $this->expectException(InvalidArgumentException::class);
+        new Personne("John Doe", 12345, "password123", "john@example.com", "123456789");
+    }
+
+    public function testConstructorInvalidEmail() {
+        $this->expectException(InvalidArgumentException::class);
+        new Personne("John Doe", "john123", "password123", 12345, "123456789");
+    }
+
+    public function testConstructorInvalidNumTel() {
+        $this->expectException(InvalidArgumentException::class);
+        new Personne("John Doe", "john123", "password123", "john@example.com", 123456789);
+    }
+
+    public function testSettersValid() {
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+
+        $personne->setNom("Jane Doe");
+        $personne->setId("jane123");
+        $personne->setMdp("password456");
+        $personne->setEmail("jane@example.com");
+        $personne->setNumTel("987654321");
+
+        $this->assertEquals("Jane Doe", $personne->getNom());
+        $this->assertEquals("jane123", $personne->getId());
+        $this->assertEquals("password456", $personne->getMdp());
+        $this->assertEquals("jane@example.com", $personne->getEmail());
+        $this->assertEquals("987654321", $personne->getNumTel());
+    }
+
+    public function testSetNomInvalid() {
+        $this->expectException(InvalidArgumentException::class);
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $personne->setNom(12345);
+    }
+
+    public function testSetEmailInvalid() {
+        $this->expectException(InvalidArgumentException::class);
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $personne->setEmail(12345);
+    }
+
+    public function testSetNumTelInvalid() {
+        $this->expectException(InvalidArgumentException::class);
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $personne->setNumTel(123456789);
+    }
+
+    public function testConnexionSuccess() {
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $this->assertTrue($personne->connexion("john123", "password123"));
+    }
+
+    public function testConnexionFailure() {
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $this->assertFalse($personne->connexion("wrongId", "wrongPassword"));
+    }
+
+    public function testModifierInfoConnexion() {
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+
+        $personne->modifierInfoConnexion("newId", "newPassword");
+        $this->assertEquals("newId", $personne->getId());
+        $this->assertEquals("newPassword", $personne->getMdp());
+    }
+
+    public function testVerifPersonne() {
+        $mockDbConnection = $this->createMock(PDO::class);
+        $mockStatement = $this->createMock(PDOStatement::class);
+
+        $mockDbConnection->method('prepare')->willReturn($mockStatement);
+        $mockStatement->method('execute')->willReturn(true);
+        $mockStatement->method('rowCount')->willReturn(1);
+
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $this->assertTrue($personne->verifPersonne($mockDbConnection));
+    }
+
+    public function testVerifPersonneNotFound() {
+        $mockDbConnection = $this->createMock(PDO::class);
+        $mockStatement = $this->createMock(PDOStatement::class);
+
+        $mockDbConnection->method('prepare')->willReturn($mockStatement);
+        $mockStatement->method('execute')->willReturn(true);
+        $mockStatement->method('rowCount')->willReturn(0);
+
+        $personne = new Personne("John Doe", "john123", "password123", "john@example.com", "123456789");
+        $this->assertFalse($personne->verifPersonne($mockDbConnection));
+    }
+}
+?>
