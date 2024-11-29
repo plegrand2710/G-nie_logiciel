@@ -6,6 +6,28 @@
         public function  __construct(){}
 
         public function initialiseRib($numCpt, $cGuichet,$cle1, $cIBAN, $tNom, $tPrenom, $identifiantRIB){
+            if(!is_int($numCpt)){
+                throw new InvalidArgumentException("Le numero de compte doit etre un int");
+            }
+            if(!is_int($cGuichet)){
+                throw new InvalidArgumentException("Le code guichet doit etre un int");
+            }
+            if(!is_int($cle1)){
+                throw new InvalidArgumentException("La cle doit etre un int");
+            }
+            if(!is_int($identifiantRIB)){
+                throw new InvalidArgumentException("L'identifiant doit etre un int");
+            }
+
+            if(!is_string($cIBAN)){
+                throw new InvalidArgumentException("Le code IBAN doit etre un String");
+            }
+            if(!is_string($tNom)){
+                throw new InvalidArgumentException("Le nom doit etre un string");
+            }
+            if(!is_string($tPrenom)){
+                throw new InvalidArgumentException("Le prenom doit etre un string");
+            }
             $this->_numero_compte = $numCpt;
             $this->_code_guichet = $cGuichet;
             $this->_cle = $cle1;
