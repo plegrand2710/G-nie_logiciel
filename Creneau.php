@@ -1,4 +1,7 @@
 <?php
+
+namespace App;
+
 class Creneau {
 
     private DateTime $_date;
@@ -19,22 +22,43 @@ class Creneau {
 
     //Setter
     public function set_date($date): void{
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            throw new \InvalidArgumentException("La date doit être au format 'YYYY-MM-DD'.");
+        }
+
         $this->_date = $date;
     }
 
     public function set_heureDebut($heureDebut): void{
+        if (!preg_match('/^\d{2}:\d{2}$/', $heureDebut)) {
+            throw new \InvalidArgumentException("L'heure de début doit être au format 'HH:MM'.");
+        }
+
         $this->_heureDebut = $heureDebut;
     }
 
     public function set_heureFin($heureFin): void{
+        if (!preg_match('/^\d{2}:\d{2}$/', $heureFin)) {
+            throw new \InvalidArgumentException("L'heure de fin doit être au format 'HH:MM'.");
+        }
         $this->_heureFin = $heureFin;
     }
 
     public function set_occupation($occupe): void{
+
+        if (!is_bool($occupe) || empty($occupe)) {
+            throw new \InvalidArgumentException("Le statut 'occupé' doit être un booléen");
+        }
         $this->_occupe = $occupe;
     }
 
     public function set_creneauID($Id_Creneau): void{
+
+        if (!is_numeric($Id_Creneau) || empty($Id_Creneau) || $Id_Creneau > 0) {
+            throw new \InvalidArgumentException("L'identifiant du créneau doit être un entier positif et non nul.");
+        }
+
         $this->_id_Creneau = $Id_Creneau;
     }
 
@@ -53,6 +77,10 @@ class Creneau {
 
     public function get_occupation(): bool {
         return $this->_occupe;
+    }
+
+    public function get_ID_Creneau(): int{
+        return $this->_id_Creneau;
     }
 
     public function reserverCreneau(): void{
