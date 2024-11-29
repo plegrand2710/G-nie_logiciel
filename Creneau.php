@@ -1,56 +1,66 @@
 <?php
 class Creneau {
 
-    private date $_date;
-    private time $_heureDebut;
-    private time $_heureFin;
+    private DateTime $_date;
+    private string $_heureDebut;
+    private string $_heureFin;
     private bool $_occupe;
+    private int $_id_Creneau;
 
 
     //constructeur
-    function __construct(date $date, time $heureDebut, time $heureFin) {
-        $this->$date = $date;
-        $this->$heureDebut = $heureDebut;
-        $this->$heureFin = $heureFin;
+    function __construct(string $date, string $heureDebut, string $heureFin, bool $occupe, int $Id_Creneau) {
+        $this->set_date($date);
+        $this->set_heureDebut($heureDebut);
+        $this->set_heureFin($heureFin);
+        $this->set_occupation($occupe);
+        $this->set_creneauID($Id_Creneau);
     }
-
-    /*public function verifierDisponibilite(Activite $activite): bool {
-
-    }
-
-    public function libererCreneau(Activite $activite): void {
-        //Changement de statut
-    }
-
-    public function reserverCreneau(Activite $activite, Utilisateur $utilisateur): void {
-
-    }*/
-
 
     //Setter
-    public function set_date(date $date): void{
-        $this->$date = $date;
+    public function set_date($date): void{
+        $this->_date = $date;
     }
 
-    public function set_heureDebut(time $heureDebut): void{
-        $this->$heureDebut = $heureDebut;
+    public function set_heureDebut($heureDebut): void{
+        $this->_heureDebut = $heureDebut;
     }
 
-    public function set_heureFin(time $heureFin): void{
-        $this->$heureFin = $heureFin;
+    public function set_heureFin($heureFin): void{
+        $this->_heureFin = $heureFin;
+    }
+
+    public function set_occupation($occupe): void{
+        $this->_occupe = $occupe;
+    }
+
+    public function set_creneauID($Id_Creneau): void{
+        $this->_id_Creneau = $Id_Creneau;
     }
 
     //Getter
-    public function get_date(): date {
-        return $this->$date;
+    public function get_date(): DateTime {
+        return $this->_date;
     }
 
-    public function get_heureDebut(): time {
-        return $this->$heureDebut;
+    public function get_heureDebut(): string {
+        return $this->_heureDebut;
     }
 
-    public function get_heureFin(): time{
-        return $this->$heureFin;
+    public function get_heureFin(): string{
+        return $this->_heureFin;
+    }
+
+    public function get_occupation(): bool {
+        return $this->_occupe;
+    }
+
+    public function reserverCreneau(): void{
+        $this->_occupe = true;
+    }
+
+    public function libererCreneau(): void{
+        $this->_occupe = false;
     }
 }
 ?>
