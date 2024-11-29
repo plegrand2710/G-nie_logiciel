@@ -1,38 +1,61 @@
 <?php
+namespace App;
 class Remboursement {
-    private date $date;
-    private float $montant;
-    private float $penalite;
 
-    function __construct(date $date, float $montant, float $penalite){
-        $this->$date = $date;
-        $this->$montant = $montant;
-        $this->$penalite = $penalite;
+    private string $_date;
+    private float $_montant;
+    private float $_penalite;
+
+    // Constructeur
+    function __construct($date, $montant, $penalite) {
+        $this->set_date($date);
+        $this->set_montant($montant);
+        $this->set_penalite($penalite);
     }
 
-    //Setter
-    public function set_date(date $date): void{
-        $this->$date = $date;
+    // Setter
+    public function set_date($date): void {
+        if (!strtotime($date)) {
+            throw new \InvalidArgumentException("La date est invalide.");
+        }
+        $this->_date = $date;
     }
 
-    public function set_montant(float $montant): void{
-        $this->$montant = $montant;
+    public function set_montant($montant): void {
+        if (!is_numeric($montant) || $montant < 0) {
+            throw new \InvalidArgumentException("Le montant doit être un nombre positif.");
+        }
+        $this->_montant = (float) $montant;
     }
 
-    public function set_penalite(float $penalite): void{
-        $this->$penalite = $penalite;
+    public function set_penalite($penalite): void {
+        if (!is_numeric($penalite) || $penalite < 0) {
+            throw new \InvalidArgumentException("La pénalité doit être un nombre positif.");
+        }
+        $this->_penalite = (float) $penalite;
     }
 
-    //Getter
-    public function get_date(): date{
-        return $this->$date;
+    // Getter 
+    public function get_date(): string {
+        return $this->_date;
     }
 
-    public function get_montant(): float{
-        $this->$montant;
+    public function get_montant(): float {
+        return $this->_montant;
     }
 
-    public function get_penalite(): float{
-        $this->$penalite;
+    public function get_penalite(): float {
+        return $this->_penalite;
+    }
+
+    // Fonction rembourser
+    public function rembourser(): void {
+
+        $remboursementTotal = $this->_montant - $this->_penalite;
+        if ($remboursementTotal < 0) {
+            $remboursementTotal = 0;
+            throw new RuntimeException("Le remboursement est négatif à cause d'une pénalité élevée.");
+        }
+
     }
 }
