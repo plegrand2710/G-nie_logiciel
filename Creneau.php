@@ -4,7 +4,7 @@ namespace App;
 
 class Creneau {
 
-    private DateTime $_date;
+    private string $_date;
     private string $_heureDebut;
     private string $_heureFin;
     private bool $_occupe;
@@ -47,7 +47,7 @@ class Creneau {
 
     public function set_occupation($occupe): void{
 
-        if (!is_bool($occupe) || empty($occupe)) {
+        if (!is_bool($occupe)) {
             throw new \InvalidArgumentException("Le statut 'occupé' doit être un booléen");
         }
         $this->_occupe = $occupe;
@@ -55,7 +55,7 @@ class Creneau {
 
     public function set_creneauID($Id_Creneau): void{
 
-        if (!is_numeric($Id_Creneau) || empty($Id_Creneau) || $Id_Creneau > 0) {
+        if (!is_numeric($Id_Creneau) || $Id_Creneau <= 0) {
             throw new \InvalidArgumentException("L'identifiant du créneau doit être un entier positif et non nul.");
         }
 
@@ -63,7 +63,7 @@ class Creneau {
     }
 
     //Getter
-    public function get_date(): DateTime {
+    public function get_date(): string {
         return $this->_date;
     }
 
@@ -84,7 +84,12 @@ class Creneau {
     }
 
     public function reserverCreneau(): void{
+        if($this->get_occupation()){
+            throw new \Exception("Ce créneau est déjà réservé.");
+        }
+
         $this->_occupe = true;
+        
     }
 
     public function libererCreneau(): void{
