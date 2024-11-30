@@ -65,6 +65,12 @@ abstract class Personne {
         $this->_nom = $nom1;
     }
 
+    public function setPDO($pdo) {
+        if (!$pdo instanceof PDO) {
+            throw new InvalidArgumentException("Le PDO doit être un PDO.");
+        }
+        $this->_pdo = $pdo;
+    }
     public function setId($id1) {
         if (!is_string($id1) || empty($id1)) {
             throw new InvalidArgumentException("L'identifiant doit être une chaîne de caractères non vide.");
