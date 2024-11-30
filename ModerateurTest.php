@@ -16,11 +16,11 @@ class ModerateurTest extends TestCase {
 
     private function cleanDatabase(): void {
         $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0;');
-        $this->pdo->exec('TRUNCATE TABLE RIB;');
-        $this->pdo->exec('TRUNCATE TABLE Cotisation;');
-        $this->pdo->exec('TRUNCATE TABLE Utilisateur;');
-        $this->pdo->exec('TRUNCATE TABLE Moderateur;');
-        $this->pdo->exec('TRUNCATE TABLE Personne;');
+        $this->pdo->exec('DELETE FROM RIB;');
+        $this->pdo->exec('DELETE FROM Cotisation;');
+        $this->pdo->exec('DELETE FROM Utilisateur;');
+        $this->pdo->exec('DELETE FROM Moderateur;');
+        $this->pdo->exec('DELETE FROM Personne;');
         $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 1;');
     }
 
@@ -69,5 +69,58 @@ class ModerateurTest extends TestCase {
         $this->expectExceptionMessage("Utilisateur introuvable avec l'ID 999");
 
         $moderateur->supprimerUtilisateur(999);
+    }
+
+    public function testSuppressionUtilisateurAvecIdValide(): void {
+        $utilisateur = new Utilisateur("John Doe", "jdoe", "password123", "jdoe@example.com", "0123456789");
+        $stmt = $this->pdo->prepare("SELECT idUtilisateur FROM Utilisateur WHERE idPersonne = (SELECT idPersonne FROM Personne WHERE identifiant = :identifiant)");
+        $stmt->execute([':identifiant' => $utilisateur->getId()]);
+        $idUtilisateur = $stmt->fetchColumn();
+
+        $moderateur = new Moderateur("Admin", "admin", "securepass", "admin@example.com", "0987654321");
+
+        $result = $moderateur->supprimerUtilisateur($idUtilisateur);
+
+        $this->assertTrue($result, "La suppression devrait retourner true.");
+
+        $stmt = $this->pdo->prepare("SELECT * FROM Utilisateur WHERE idUtilisateur = :idUtilisateur");
+        $stmt->execute([':idUtilisateur' => $idUtilisateur]);
+        $this->assertEmpty($stmt->fetch(), "L'utilisateur ne devrait plus exister.");
+
+        $stmt = $this->pdo->prepare("SELECT * FROM Personne WHERE identifiant = :identifiant");
+        $stmt->execute([':identifiant' => $utilisateur->getId()]);
+        $this->assertEmpty($stmt->fetch(), "La personne associée ne devrait plus exister.");
+    }
+
+    public function testSuppressionUtilisateurAvecIdInexistant(): void {
+        $moderateur = new Moderateur("Admin", "admin", "securepass", "admin@example.com", "0987654321");
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Utilisateur introuvable avec l'ID 99999.");
+
+        $moderateur->supprimerUtilisateur(99999);
+    }
+
+    public function testSuppressionUtilisateurAvecTypeInvalide(): void {
+        $moderateur = new Moderateur("Admin", "admin", "securepass", "admin@example.com", "0987654321");
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("L'ID utilisateur doit être un entier.");
+
+        $moderateur->supprimerUtilisateur("invalide");
+    }
+
+    public function testSuppressionUtilisateurAvecErreurBaseDeDonnees(): void {
+        $moderateur = new Moderateur("Admin", "admin", "securepass", "admin@example.com", "0987654321");
+
+        $mockPdo = $this->createMock(PDO::class);
+        $mockPdo->method('beginTransaction')->will($this->throwException(new PDOException("Erreur SQL simulée")));
+
+        $moderateur->setPDO($mockPdo);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Erreur lors de la suppression : Erreur SQL simulée");
+
+        $moderateur->supprimerUtilisateur(1);
     }
 }

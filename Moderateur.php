@@ -20,7 +20,11 @@ class Moderateur extends Personne {
         $stmt->execute([':idPersonne' => $idPersonne]);
     }
 
-    public function supprimerUtilisateur(int $idUtilisateur): bool {
+    public function supprimerUtilisateur($idUtilisateur): bool {
+        if (!is_int($idUtilisateur)) {
+            throw new InvalidArgumentException("L'ID utilisateur doit être un entier.");
+        }
+    
         $pdo = $this->getPdo();
     
         try {
