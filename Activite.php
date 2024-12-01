@@ -30,19 +30,19 @@ class Activite {
         if (!is_numeric($tarif) || $tarif < 0) {
             throw new \InvalidArgumentException("Le tarif doit être un nombre positif.");
         }
-        $this->tarif = (float)$tarif;
+        $this->_tarif = (float)$tarif;
     }
 
     public function set_duree($duree): void {
         if (!is_string($duree) || empty($duree)) {
             throw new \InvalidArgumentException("La durée doit être une chaîne non vide.");
         }
-        $this->duree = $duree;
+        $this->_duree = $duree;
     }
 
     public function set_id_Activite(int $ID_Activite) {
 
-        if (!is_numeric($ID_Activite) || empty($ID_Activite) || $ID_Activite > 0) {
+        if (!is_numeric($ID_Activite) || empty($ID_Activite) || $ID_Activite <= 0) {
             throw new \InvalidArgumentException("L'identifiant de l'activité doit être un entier positif et non nul.");
         }
         
