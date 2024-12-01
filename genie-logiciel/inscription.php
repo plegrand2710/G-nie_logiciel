@@ -26,6 +26,22 @@ if (!in_array($type, ['Utilisateur', 'Moderateur'])) {
             <input type="password" name="mdp" placeholder="Mot de passe (min. 8 caractères)" required>
             <input type="email" name="email" placeholder="Adresse email" required>
             <input type="text" name="numTel" placeholder="Numéro de téléphone" required>
+            <?php if ($_GET['type'] === 'Utilisateur') : ?>
+                <h3>Informations bancaires</h3>
+                <input type="text" name="numeroCompte" placeholder="Numéro de compte" required><br>
+                
+                <input type="text" name="codeGuichet" placeholder="Code guichet" required><br>
+                
+                <input type="text" name="cleRib" placeholder="Clé RIB" required><br>
+                
+                <input type="text" name="iban" placeholder="Code IBAN" required><br>
+                
+                <input type="text" name="titulaireNom" placeholder="Nom du titulaire" required><br>
+                
+                <input type="text" name="titulairePrenom" placeholder="Prénom du titulaire" required><br>
+                
+                <input type="text" name="identifiantRib" placeholder="Identifiant du RIB" required><br>
+            <?php endif; ?>
             <button type="submit">S'inscrire</button>
         </form>
         <p style="text-align: center; margin-top: 10px;">

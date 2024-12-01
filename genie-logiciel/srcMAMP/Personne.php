@@ -1,5 +1,5 @@
 <?php
-//include './../require.php';
+require_once 'BaseDeDonnees.php';
 
 abstract class Personne {
     private string $_nom, $_identifiant, $_mdp, $_email, $_numTel;
@@ -22,7 +22,7 @@ abstract class Personne {
             throw new InvalidArgumentException("L'email n'est pas valide.");
         }
         if (!preg_match('/^\d{8,10}$/', $numtelC)) {
-            throw new InvalidArgumentException("Le numéro de téléphone doit contenir exactement 10 chiffres.");
+            throw new InvalidArgumentException("Le numéro de téléphone doit contenir entre 8 et 10 chiffres.");
         }
 
         $this->_nom = $nomC;

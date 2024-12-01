@@ -1,6 +1,6 @@
 <?php
-  class Utilisateur extends Personne {
-    private Rib $_rib; 
+class Utilisateur extends Personne {
+    private Rib $_rib;
     private array $_cotisations;
 
     public function __construct($nomC, $id, $mdpC, $emailC, $numtelC) {
@@ -36,21 +36,58 @@
         return $this->_cotisations;
     }
 
+    public function setRib($rib): void {
+        if (!$rib instanceof RIB) {
+            throw new InvalidArgumentException("Le rib doit être une instance de RIB.");
+        }
+        $this->_rib = $rib;
+    }
+
     public function addCotisation(Cotisation $cotisation): void {
         $this->_cotisations[] = $cotisation;
     }
 
     public function VerifPayerCotisation(): bool {
-        if (!empty($this->_cotisations)) {
-            $derniereCotisation = end($this->_cotisations);
-            if ($derniereCotisation->verifValiditeCotisation()) {
-                echo "La dernière cotisation est encore valide. Aucun paiement nécessaire.\n";
+        $pdo = $this->getPdo();
+
+        $stmt = $pdo->prepare("SELECT idUtilisateur FROM Utilisateur WHERE idPersonne = (SELECT idPersonne FROM Personne WHERE identifiant = :identifiant)");
+        $stmt->execute([':identifiant' => $this->getId()]);
+        $idUtilisateur = $stmt->fetchColumn();
+
+        if (!$idUtilisateur) {
+            return false;
+        }
+
+        $stmt = $pdo->prepare("SELECT date_fin FROM Cotisation WHERE idUtilisateur = :idUtilisateur");
+        $stmt->execute([':idUtilisateur' => $idUtilisateur]);
+        $cotisations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $aujourdhui = new DateTime();
+        foreach ($cotisations as $cotisation) {
+            $dateFin = new DateTime($cotisation['date_fin']);
+            if ($dateFin >= $aujourdhui) {
+                $this->mettreAJourCotisationActive($idUtilisateur, true);
+                echo "Une cotisation valide a été trouvée. Aucun paiement nécessaire.\n";
                 return true;
             }
         }
-
-        echo "La dernière cotisation n'est plus valide ou inexistante. Paiement nécessaire.\n";
+        $this->mettreAJourCotisationActive($idUtilisateur, false);
+        echo "Aucune cotisation valide trouvée. Paiement nécessaire.\n";
         return false;
+    }
+
+    private function mettreAJourCotisationActive(int $idUtilisateur, bool $active): void {
+        $pdo = $this->getPdo();
+    
+        try {
+            $stmt = $pdo->prepare("UPDATE Utilisateur SET cotisation_active = :active WHERE idUtilisateur = :idUtilisateur");
+            $stmt->execute([
+                ':active' => $active ? 1 : 0,
+                ':idUtilisateur' => $idUtilisateur,
+            ]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la mise à jour de la cotisation_active : " . $e->getMessage());
+        }
     }
 }
 ?>
