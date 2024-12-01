@@ -30,13 +30,13 @@ CREATE TABLE Utilisateur (
     idUtilisateur INT PRIMARY KEY AUTO_INCREMENT,
     cotisation_active BOOLEAN NOT NULL,
     idPersonne INT NOT NULL,
-    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne)
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne)  ON DELETE CASCADE
 );
 
 CREATE TABLE Moderateur (
     idModerateur INT PRIMARY KEY AUTO_INCREMENT,
     idPersonne INT NOT NULL,
-    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne)
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne)  ON DELETE CASCADE
 );
 
 CREATE TABLE RIB (
@@ -49,7 +49,7 @@ CREATE TABLE RIB (
     titulaire_prenom VARCHAR(100) NOT NULL,
     identifiant_rib VARCHAR(100) UNIQUE,
     idUtilisateur INT NOT NULL,
-    FOREIGN KEY (idUtilisateur) REFERENCES Utilisateur(idUtilisateur)
+    FOREIGN KEY (idUtilisateur) REFERENCES Utilisateur(idUtilisateur)  ON DELETE CASCADE
 );
 
 CREATE TABLE RIBEntreprise (
@@ -69,8 +69,8 @@ CREATE TABLE Paiement (
     date_paiement DATETIME NOT NULL,
     idRIB INT NOT NULL,
     idRIBEntreprise INT NOT NULL,
-    FOREIGN KEY (idRIB) REFERENCES RIB(idRIB),
-    FOREIGN KEY (idRIBEntreprise) REFERENCES RIBEntreprise(idRIBEntreprise)
+    FOREIGN KEY (idRIB) REFERENCES RIB(idRIB) ON DELETE CASCADE,
+    FOREIGN KEY (idRIBEntreprise) REFERENCES RIBEntreprise(idRIBEntreprise)  ON DELETE CASCADE
 );
 
 CREATE TABLE Cotisation (
@@ -80,8 +80,8 @@ CREATE TABLE Cotisation (
     date_fin DATE NOT NULL,
     idUtilisateur INT NOT NULL,
     idPaiement INT,
-    FOREIGN KEY (idUtilisateur) REFERENCES Utilisateur(idUtilisateur),
-    FOREIGN KEY (idPaiement) REFERENCES Paiement(idPaiement)
+    FOREIGN KEY (idUtilisateur) REFERENCES Utilisateur(idUtilisateur) ON DELETE CASCADE,
+    FOREIGN KEY (idPaiement) REFERENCES Paiement(idPaiement) ON DELETE SET NULL
 );
 
 CREATE TABLE Activite (
@@ -113,9 +113,9 @@ CREATE TABLE Reservation (
     idCreneau INT NOT NULL,
     idActivite INT NOT NULL,
     idCalendrier INT,
-    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne),
-    FOREIGN KEY (idCreneau) REFERENCES Creneau(idCreneau),
-    FOREIGN KEY (idActivite) REFERENCES Activite(idActivite),
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne) ON DELETE CASCADE,
+    FOREIGN KEY (idCreneau) REFERENCES Creneau(idCreneau) ON DELETE CASCADE,
+    FOREIGN KEY (idActivite) REFERENCES Activite(idActivite)  ON DELETE CASCADE,
     FOREIGN KEY (idCalendrier) REFERENCES Calendrier(idCalendrier)
 );
 
@@ -125,8 +125,8 @@ CREATE TABLE Remboursement (
     date_remboursement DATETIME NOT NULL,
     idReservation INT NOT NULL,
     idPaiement INT NOT NULL,
-    FOREIGN KEY (idReservation) REFERENCES Reservation(idReservation),
-    FOREIGN KEY (idPaiement) REFERENCES Paiement(idPaiement)
+    FOREIGN KEY (idReservation) REFERENCES Reservation(idReservation) ON DELETE CASCADE,
+    FOREIGN KEY (idPaiement) REFERENCES Paiement(idPaiement) ON DELETE CASCADE
 );
 
 CREATE TABLE Notification (
@@ -145,18 +145,19 @@ CREATE TABLE recoit (
     idPersonne INT NOT NULL,
     idNotification INT NOT NULL,
     PRIMARY KEY (idPersonne, idNotification),
-    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne),
-    FOREIGN KEY (idNotification) REFERENCES Notification(idNotification)
+    FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne) ON DELETE CASCADE,
+    FOREIGN KEY (idNotification) REFERENCES Notification(idNotification) ON DELETE CASCADE
 );
 
 CREATE TABLE ferme (
     idFermeture INT NOT NULL,
     idCalendrier INT NOT NULL,
     PRIMARY KEY (idFermeture, idCalendrier),
-    FOREIGN KEY (idFermeture) REFERENCES Fermeture(idFermeture),
-    FOREIGN KEY (idCalendrier) REFERENCES Calendrier(idCalendrier)
+    FOREIGN KEY (idFermeture) REFERENCES Fermeture(idFermeture) ON DELETE CASCADE,
+    FOREIGN KEY (idCalendrier) REFERENCES Calendrier(idCalendrier) ON DELETE CASCADE
 );
 
+INSERT INTO `RIBEntreprise` (`idRIBEntreprise`, `numero_compte`, `code_guichet`, `cle`, `code_iban`, `titulaire_nom`, `titulaire_prenom`, `identifiant_rib`) VALUES ('1', '98765', '56', '876', 'FR34567898765432123465', 'salle de sport', 'Entreprise', '123');
 /*
 --Personne (idPersonne, nom, identifiant, mdp, email, numTel, type)  
 --Utilisateur (idUtilisateur, cotisation_active, #idpersonne)  
