@@ -53,7 +53,7 @@ class GestionCreneauxActivite {
     // Modifier un créneau
     public function modifierCreneauActivite(int $id_creneauAModifier, Creneau $creneauModifie): void {
         foreach ($this->_tableCreneaux as &$creneau) {
-            if ($creneau->get_id() === $id_creneauAModifier) {
+            if ($creneau->get_ID_Creneau() === $id_creneauAModifier) {
                 $creneau = $creneauModifie;
                 return;
             }
@@ -68,13 +68,13 @@ class GestionCreneauxActivite {
 
     // Supprimer un créneau
     public function supprimerCreneauActivite(Creneau $creneau, PDO $pdo): void {
-        $id_creneau = $creneau->get_id();
+        $id_creneau = $creneau->get_ID_Creneau();
         try {
             $query = "DELETE FROM CreneauActivite WHERE id_creneau = :id_creneau";
             $stmt = $pdo->prepare($query);
             $stmt->bindParam(':id_creneau', $id_creneau, PDO::PARAM_INT);
             $stmt->execute();
-            $this->_tableCreneaux = array_filter($this->_tableCreneaux, fn($c) => $c->get_id() !== $id_creneau);
+            $this->_tableCreneaux = array_filter($this->_tableCreneaux, fn($c) => $c->get_ID_Creneau() !== $id_creneau);
         } catch (PDOException $e) {
             throw new Exception("Erreur lors de la suppression : " . $e->getMessage());
         }
