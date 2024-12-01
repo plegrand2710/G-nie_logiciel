@@ -1,5 +1,7 @@
 <?php
 namespace App;
+//require 'Paiement.php';
+
 class Remboursement {
 
     private string $_date;
@@ -49,13 +51,17 @@ class Remboursement {
     }
 
     // Fonction rembourser
-    public function rembourser(): void {
+    public function rembourser(): float {
 
         $remboursementTotal = $this->_montant - $this->_penalite;
         if ($remboursementTotal < 0) {
             $remboursementTotal = 0;
-            throw new RuntimeException("Le remboursement est négatif à cause d'une pénalité élevée.");
+            throw new \RuntimeException("Le remboursement est négatif à cause d'une pénalité élevée.");
         }
+
+        //effectuerPaiement();
+
+        return $remboursementTotal;
 
     }
 }
