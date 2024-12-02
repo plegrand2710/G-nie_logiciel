@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion</title>
-    <link rel="stylesheet" href="index-css.css">
+    <title>Votre Salle de Sport</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="header">
-        <h1>Connexion</h1>
-    </div>
-
-    <div class="container login-form">
-        <form action="connexion-action.php" method="POST">
-            <h2>Connectez-vous</h2>
-            <input type="text" name="identifiant" placeholder="Identifiant" required>
-            <input type="password" name="mdp" placeholder="Mot de passe" required>
-            <button type="submit">Se connecter</button>
-        </form>
-        <p style="text-align: center; margin-top: 10px;">
-            Pas encore inscrit ? <a href="inscription.php?type=Utilisateur">Inscrivez-vous ici</a>.
-        </p>
-    </div>
+    <main class="main-content">
+        <div class="text-container">
+            <div class="logo">
+                <img class="logoimg" src="IMG_1227.jpeg" alt="Logo Salle de Sport">
+                <p class="nom-logo">SalleFit</p>
+            </div>
+            <h1>Bienvenue à votre salle de sport</h1>
+            <p>Améliorez votre bien-être avec nos équipements modernes et un encadrement professionnel.</p>
+            <a href="accueil.php" class="btn-connexion">Se Connecter</a>
+        </div>
+        <div class="image-container">
+            <img src="gym-background.jpeg" alt="Salle de sport">
+        </div>
+    </main>
 </body>
 </html>

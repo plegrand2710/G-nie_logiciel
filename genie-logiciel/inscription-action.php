@@ -1,5 +1,6 @@
 <?php
 include 'require.php';
+session_start();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $type = $_POST['type'] ?? 'Utilisateur';
@@ -51,17 +52,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rib = new Rib();
             $rib->initialiseRIB((int)$numeroCompte, (int)$codeGuichet, (int)$cleRib, $iban, $titulaireNom, $titulairePrenom, $identifiantRIB, $idUtilisateur);
             $utilisateur->setRib($rib);
-
+            $pdo->commit();
+            $_SESSION['idUtilisateur'] = $idUtilisateur;
+            header("Location: paiement-cotisation.php");
+            exit;
             $dateDebut = new DateTime();
             $cotisation = new Cotisation($dateDebut, $idUtilisateur);
             $utilisateur->addCotisation($cotisation);
         } elseif ($type === 'Moderateur') {
             $moderateur = new Moderateur($nom, $identifiant, $mdp, $email, $numTel);
+            $pdo->commit();
         } else {
             throw new InvalidArgumentException("Type d'inscription invalide.");
         }
 
-        $pdo->commit();
+        
 
         header('Location: index.php?reussi=oui');
     } catch (Exception $e) {
