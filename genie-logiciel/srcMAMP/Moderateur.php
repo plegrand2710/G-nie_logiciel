@@ -3,21 +3,6 @@ class Moderateur extends Personne {
     public function __construct($nomC, $id, $mdpC, $emailC, $numtelC) {
         parent::__construct($nomC, $id, $mdpC, $emailC, $numtelC);
 
-        $pdo = $this->getPdo();
-
-        $stmt = $pdo->prepare("SELECT idPersonne FROM Personne WHERE identifiant = :identifiant");
-        $stmt->execute([':identifiant' => $this->getId()]);
-        $idPersonne = $stmt->fetchColumn();
-
-        if (!$idPersonne) {
-            throw new RuntimeException("Échec de l'insertion du modérateur. La personne n'a pas été trouvée.");
-        }
-
-        $stmt = $pdo->prepare("
-            INSERT INTO Moderateur (idPersonne)
-            VALUES (:idPersonne)
-        ");
-        $stmt->execute([':idPersonne' => $idPersonne]);
     }
 
     public function supprimerUtilisateur($idUtilisateur): bool {
@@ -62,6 +47,26 @@ class Moderateur extends Personne {
             $pdo->rollBack();
             throw new Exception("Erreur lors de la suppression : " . $e->getMessage());
         }
+    }
+
+    public function ajouterDansLaBDD(){
+        parent::ajouterDansLaBase();
+
+        $pdo = $this->getPdo();
+
+        $stmt = $pdo->prepare("SELECT idPersonne FROM Personne WHERE identifiant = :identifiant");
+        $stmt->execute([':identifiant' => $this->getId()]);
+        $idPersonne = $stmt->fetchColumn();
+
+        if (!$idPersonne) {
+            throw new RuntimeException("Échec de l'insertion du modérateur. La personne n'a pas été trouvée.");
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO Moderateur (idPersonne)
+            VALUES (:idPersonne)
+        ");
+        $stmt->execute([':idPersonne' => $idPersonne]);
     }
 }
 ?>

@@ -1,7 +1,6 @@
 <?php
 
 class GestionUtilisateur {
-    private $_reservations = [];
     private $_calendrier;
     private $_paiement;
     private $_remboursement;
@@ -14,34 +13,11 @@ class GestionUtilisateur {
             throw new InvalidArgumentException("Le calendrier doit être une instance de Calendrier.");
         }
 
-        $this->_reservations = [];
         $this->_calendrier = $calendrier;
         $this->_paiement = null;
         $this->_remboursement = null;
         $bdd = new BaseDeDonnees();
         $this->_pdo = $bdd->getConnexion();
-
-        self::$_RIBEntreprise = new RIB();
-        self::$_RIBEntreprise->initialiseRib(1234, 789, 98, "IBAN_valide", "entreprise", "salle", 56);
-    }
-
-
-    public function getReservations() {
-        return $this->_reservations;
-    }
-
-    public function setReservations($reservations) {
-        if (!is_array($reservations)) {
-            throw new InvalidArgumentException("Les réservations doivent être un tableau.");
-        }
-
-        foreach ($reservations as $reservation) {
-            if (!($reservation instanceof Reservation)) {
-                throw new InvalidArgumentException("Chaque élément doit être une instance de Reservation.");
-            }
-        }
-
-        $this->_reservations = $reservations;
     }
 
     public function getCalendrier() {
@@ -114,31 +90,35 @@ class GestionUtilisateur {
             throw new LogicException("Le créneau demandé n'est pas disponible.");
         }
 
-        $creneau->reserverCreneau();
-
-        $reservation = new Reservation(
-            count($this->_reservations) + 1,
-            $creneau,
-            $activite,
-            $personne
-        );
+        $reservation = new Reservation($creneau, $activite, $personne);
 
         if ($personne instanceof Utilisateur) {
             $this->paiementActivite($personne, $activite);
         }
 
-
         if (!$reservation->confirmerReservation()) {
             throw new LogicException("La réservation n'a pas pu être confirmée.");
         }
-
-        $this->ajouterReservation($reservation);
-
-        $this->ajouterDansLaBase($reservation, $personne, $activite, $creneau);
-
         
-
+        $this->ajouterDansLaBase($reservation);
+        $creneau->reserverCreneau();
         return true;
+    }
+
+    private function ajouterDansLaBase($reservation) {
+        $stmt = $this->_pdo->prepare("
+            INSERT INTO Reservation (statut, date_reservation, idPersonne, idCreneau, idActivite) 
+            VALUES (:statut, NOW(), :idPersonne, :idCreneau, :idActivite)
+        ");
+        $stmt->execute([
+            ':statut' => $reservation->getStatut(),
+            ':idPersonne' => $reservation->getPersonne()->getId(),
+            ':idCreneau' => $reservation->getCreneau()->getId(),
+            ':idActivite' => $reservation->getActivite()->getId()
+        ]);
+
+        $reservationId = $this->_pdo->lastInsertId();
+        $reservation->setId($reservationId);
     }
 
     public function paiementActivite($personne, $activite) {
@@ -152,7 +132,32 @@ class GestionUtilisateur {
 
         $montant = $activite->getTarif();
 
-        $this->_paiement = new PaiementVirement($montant, new DateTime(), $personne->getRIB(), self::$_RIBEntreprise);
+        $stmt = $this->_pdo->prepare("
+                SELECT idRIB 
+                FROM RIB 
+                WHERE idUtilisateur = :idUtilisateur
+                LIMIT 1
+            ");
+            $stmt->execute([':idUtilisateur' => $personne->getId()]);
+            $idRIBSource = $stmt->fetchColumn();
+
+            if (!$idRIBSource) {
+                throw new RuntimeException("RIB source introuvable pour l'utilisateur.");
+            }
+
+            $stmt = $this->_pdo->prepare("
+                SELECT idRIBEntreprise 
+                FROM RIBEntreprise
+                LIMIT 1
+            ");
+            $stmt->execute();
+            $idRIBDestinataire = $stmt->fetchColumn();
+
+            if (!$idRIBDestinataire) {
+                throw new RuntimeException("RIB destinataire (entreprise) introuvable.");
+            }
+
+        $this->_paiement = new PaiementVirement($montant, new DateTime(), $idRIBSource, $idRIBDestinataire);
 
         if (!$this->_paiement->effectuerPaiement()) {
             throw new LogicException("Le paiement a échoué.");
@@ -173,15 +178,16 @@ class GestionUtilisateur {
             throw new LogicException("Le créneau associé à la réservation est introuvable.");
         }
 
-        $creneau->libererCreneau();
         $reservation->annulerReservation();
+        $creneau->libererCreneau();
 
         if ($reservation->getStatut() == 'confirmée' && $reservation->getPersonne() instanceof Utilisateur) {
             $penalite = $this->calculerPenalite($reservation);
             $this->remboursementActivite($reservation->getPersonne(), $reservation->getActivite(), $penalite);
         } 
 
-        $this->supprimerReservation($reservation);
+        $this->supprimerDansLaBase($reservation);
+
     }
 
     private function calculerPenalite(Reservation $reservation): float {
@@ -218,127 +224,197 @@ class GestionUtilisateur {
         }
     }
 
-    public function afficherCreneauxParActiviteParPersonne($personne, $activite): array {
-        if (!$personne instanceof Personne) {
-            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
-        }
-        if (!$activite instanceof Activite) {
-            throw new InvalidArgumentException("L'activite doit être une instance de Activite.");
-        }
-    
-        $creneaux = [];
-        foreach ($this->_reservations as $reservation) {
-            if ($reservation->getPersonne() === $personne && $reservation->getActivite() === $activite) {
-                $creneaux[] = $reservation->getCreneau();
-            }
-        }
-    
-        return $creneaux;
-    }
-
-    public function afficherCreneauxDisponiblesParActivite($activite): array {
-        if (!$activite instanceof Activite) {
-            throw new InvalidArgumentException("L'activité doit être une instance de Activite.");
-        }
-    
-        $gestionCreneaux = $this->_calendrier->trouverGestionCreneauxPourActivite($activite);
-        if ($gestionCreneaux === null) {
-            throw new LogicException("Aucune gestion de créneaux trouvée pour cette activité.");
-        }
-    
-        return $gestionCreneaux->visualisationCreneauxActivite();
-    }
-
-    public function ajouterReservation($reservation): void {
-        if (!$reservation instanceof Reservation) {
-            throw new InvalidArgumentException("La reservation doit être une instance de Reservation.");
-        }
-        $reservationId = $reservation->getId();
-        if (!is_int($reservationId) || $reservationId <= 0) {
-            throw new InvalidArgumentException("L'ID de la réservation doit être un entier positif.");
-        }
-
-        foreach ($this->_reservations as $existeReservation) {
-            if ($existeReservation->getId() === $reservationId) {
-                throw new InvalidArgumentException("Une réservation avec cet ID existe déjà.");
-            }
-        }
-        $this->_reservations[] = $reservation;
-    }
-
-    public function supprimerReservation($reservation): void {
-        if (!$reservation instanceof Reservation) {
-            throw new InvalidArgumentException("La reservation doit être une instance de Reservation.");
-        }
-        $reservationId = $reservation->getId();
-        foreach ($this->_reservations as $key => $reservation) {
-            if ($reservation->getId() === $reservationId) {
-                unset($this->_reservations[$key]);
-                $this->_reservations = array_values($this->_reservations);
-                $reservation->annulerReservation();
-                return;
-            }
-        }
-
-        throw new InvalidArgumentException("Aucune réservation trouvée avec l'ID spécifié.");
-    }
-
-    public function afficherReservationsParUtilisateur($personne): array {
-        if (!$personne instanceof Personne) {
-            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
-        }
-        $reservationsUtilisateur = [];
-        foreach ($this->_reservations as $reservation) {
-            if ($reservation->getPersonne() === $personne) {
-                $reservationsUtilisateur[] = $reservation;
-            }
-        }
-        return $reservationsUtilisateur;
-    }
-    
-    public function afficherTousLesCreneauxPourUtilisateur($personne): array {
-        if (!$personne instanceof Personne) {
-            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
-        }
-    
-        $creneaux = [];
-        foreach ($this->_reservations as $reservation) {
-            if ($reservation->getPersonne() === $personne) {
-                $creneaux[] = $reservation->getCreneau();
-            }
-        }
-    
-        return $creneaux;
-    }
-
-    public function afficherReservationsUtilisateurParActivite($personne, $activite): array {
-        if (!$personne instanceof Personne) {
-            throw new InvalidArgumentException("La personne doit être une instance de Personne.");
-        }
-        if (!$activite instanceof Activite) {
-            throw new InvalidArgumentException("L'activite doit être une instance de Activite.");
-        }
-        $reservationsUtilisateur = [];
-        foreach ($this->_reservations as $reservation) {
-            if ($reservation->getPersonne() === $personne && $reservation->getActivite() === $activite) {
-                $reservationsUtilisateur[] = $reservation;
-            }
-        }
-        return $reservationsUtilisateur;
-    }
-
-    public function ajouterDansLaBase($reservation, $personne, $activite, $creneau){
-            $stmt = $this->_pdo->prepare("
-            INSERT INTO Reservation (idReservation, statut, date_reservation, idPersonne, idCreneau, idActivite)
-            VALUES (:id, :statut, NOW(), :idPersonne, :idCreneau, :idActivite)
+    public function afficherCreneauxParActiviteParPersonne($idPersonne, $idActivite): array {
+        $stmt = $this->_pdo->prepare("
+            SELECT Creneau.idCreneau, Creneau.date, Creneau.heure_debut, Creneau.heure_fin
+            FROM Reservation, Creneau
+            WHERE Reservation.idCreneau = Creneau.idCreneau
+              AND Reservation.idPersonne = :idPersonne
+              AND Reservation.idActivite = :idActivite
         ");
         $stmt->execute([
-            ':id' => $reservation->getId(),
-            ':statut' => $reservation->getStatut(),
-            ':idPersonne' => $personne->getId(),
-            ':idCreneau' => $creneau->getId(),
-            ':idActivite' => $activite->getId(),
+            ':idPersonne' => $idPersonne,
+            ':idActivite' => $idActivite
         ]);
+
+        $resultats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $creneaux = [];
+        foreach ($resultats as $row) {
+            $creneaux[] = new Creneau($row['date'], $row['heure_debut'], $row['heure_fin']);
+        }
+    
+        return $creneaux;
+    }
+
+    public function afficherCreneauxDisponiblesParActivite($idActivite) {
+
+        $stmt = $this->_pdo->prepare("
+            SELECT Creneau.* 
+            FROM Creneau 
+            JOIN gestionCreneauxActivite ON Creneau.idCreneau = gestionCreneauxActivite.idCreneau
+            WHERE gestionCreneauxActivite.idActivite = :idActivite AND Creneau.reserve = 0
+        ");
+        $stmt->execute([':idActivite' => $idActivite]);
+
+        $resultats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $creneaux = [];
+
+        foreach ($resultats as $data) {
+            $creneaux[] = new Creneau($data['date'], $data['heure_debut'], $data['heure_fin']);
+        }
+
+        return $creneaux;
+    }
+
+    private function supprimerDansLaBase($reservation) {
+        $stmt = $this->_pdo->prepare("
+            DELETE FROM Reservation WHERE idReservation = :idReservation
+        ");
+        $stmt->execute([':idReservation' => $reservation->getId()]);
+    }
+
+    public function afficherReservationsParUtilisateur($idPersonne): array {
+
+        $stmt = $this->_pdo->prepare("
+            SELECT Reservation.*, 
+                   Creneau.date AS creneau_date, Creneau.heure_debut, Creneau.heure_fin, 
+                   Activite.nom AS activite_nom, Activite.tarif, Activite.duree
+            FROM Reservation
+            INNER JOIN Creneau ON Reservation.idCreneau = Creneau.idCreneau
+            INNER JOIN Activite ON Reservation.idActivite = Activite.idActivite
+            WHERE Reservation.idPersonne = :idPersonne
+        ");
+        $stmt->execute([':idPersonne' => $idPersonne]);
+    
+        $personneStmt = $this->_pdo->prepare("
+            SELECT * FROM Personne WHERE idPersonne = :idPersonne
+        ");
+        $personneStmt->execute([':idPersonne' => $idPersonne]);
+        $personneData = $personneStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$personneData) {
+            throw new RuntimeException("Personne avec l'ID $idPersonne introuvable.");
+        }
+
+        if (!filter_var($personneData['email'], FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException("L'email extrait de la base de données n'est pas valide : " . $personneData['email']);
+        }
+        
+        $personne = null;
+        if ($personneData['type'] === 'Utilisateur') {
+            $personne = new Utilisateur(
+                $personneData['nom'],
+                $personneData['identifiant'],
+                $personneData['mdp'],
+                $personneData['email'],
+                $personneData['numTel']
+            );
+        } elseif ($personneData['type'] === 'Moderateur') {
+            $personne = new Moderateur(
+                $personneData['nom'],
+                $personneData['identifiant'],
+                $personneData['mdp'],
+                $personneData['email'],
+                $personneData['numTel']
+            );
+        } else {
+            throw new LogicException("Type de personne inconnu : " . $personneData['type']);
+        }
+
+        $reservations = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            error_log("erreur tarif : " . gettype($row['tarif']));
+            $creneau = new Creneau($row['creneau_date'], $row['heure_debut'], $row['heure_fin']);
+            $activite = new Activite($row['activite_nom'], $row['tarif'], $row['duree']);
+            $reservation = new Reservation($creneau, $activite, $personne);
+            $reservation->setStatut($row['statut']);
+            $reservations[] = $reservation;
+        }
+    
+        return $reservations;
     }
     
+    public function afficherTousLesCreneauxPourUtilisateur($idPersonne): array {
+
+        $stmt = $this->_pdo->prepare("
+            SELECT Creneau.idCreneau, Creneau.date, Creneau.heure_debut, Creneau.heure_fin, Creneau.reserve
+            FROM Reservation, Creneau
+            WHERE Reservation.idCreneau = Creneau.idCreneau
+              AND Reservation.idPersonne = :idPersonne
+        ");
+        $stmt->execute([':idPersonne' => $idPersonne]);
+    
+        $resultats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $creneaux = [];
+        foreach ($resultats as $data) {
+            $creneaux[] = new Creneau(
+                $data['date'],
+                $data['heure_debut'],
+                $data['heure_fin']
+            );
+        }
+
+        return $creneaux;
+    }
+
+    public function afficherReservationsUtilisateurParActivite($idPersonne, $idActivite): array {
+        $stmt = $this->_pdo->prepare("
+            SELECT Reservation.idReservation, Reservation.statut, Reservation.date_reservation, 
+                   Creneau.date AS creneau_date, Creneau.heure_debut, Creneau.heure_fin, 
+                   Activite.nom AS activite_nom, Activite.tarif AS activite_tarif
+            FROM Reservation, Creneau, Activite
+            WHERE Reservation.idCreneau = Creneau.idCreneau
+              AND Reservation.idActivite = Activite.idActivite
+              AND Reservation.idPersonne = :idPersonne
+              AND Activite.idActivite = :idActivite
+        ");
+        $stmt->execute([
+            ':idPersonne' => $idPersonne,
+            ':idActivite' => $idActivite
+        ]);
+    
+        $resultats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $personneStmt = $this->_pdo->prepare("
+            SELECT * FROM Personne WHERE idPersonne = :idPersonne
+        ");
+        $personneStmt->execute([':idPersonne' => $idPersonne]);
+        $personneData = $personneStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$personneData) {
+            throw new RuntimeException("Personne avec l'ID $idPersonne introuvable.");
+        }
+
+        $personne = new Utilisateur(
+            $personneData['nom'],
+            $personneData['identifiant'],
+            $personneData['email'],
+            $personneData['numTel'],
+            $personneData['type']
+        );
+        $personne->setId($idPersonne);
+
+        $reservations = [];
+        foreach ($resultats as $data) {
+            $creneau = new Creneau(
+                $data['creneau_date'],
+                $data['heure_debut'],
+                $data['heure_fin']
+            );
+
+            $activite = new Activite(
+                $data['activite_nom'],
+                $data['tarif'],
+                $data['duree']
+            );
+
+            $reservation = new Reservation($creneau, $activite, $personne);
+            $reservation->setStatut($data['statut']);
+            $reservations[] = $reservation;
+        }
+
+        return $reservations;
+    }
 }

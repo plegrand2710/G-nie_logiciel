@@ -31,7 +31,7 @@ abstract class Personne {
         $this->_email = $emailC;
         $this->_numTel = $numtelC;
 
-        $this->ajouterDansLaBase();
+        //$this->ajouterDansLaBase();
     }
 
     public function getPDO() {
@@ -111,19 +111,37 @@ abstract class Personne {
         $this->setMdp($mdp2);
     }
 
-    private function ajouterDansLaBase() {
-        $stmt = $this->_pdo->prepare("
-            INSERT INTO Personne (nom, identifiant, mdp, email, numTel, type)
-            VALUES (:nom, :identifiant, :mdp, :email, :numTel, :type)
-        ");
-        $stmt->execute([
-            ':nom' => $this->_nom,
-            ':identifiant' => $this->_identifiant,
-            ':mdp' => $this->_mdp,
-            ':email' => $this->_email,
-            ':numTel' => $this->_numTel,
-            ':type' => get_class($this),
-        ]);
+    public function ajouterDansLaBase() {
+        try {
+            $stmt = $this->_pdo->prepare("
+                INSERT INTO Personne (nom, identifiant, mdp, email, numTel, type)
+                VALUES (:nom, :identifiant, :mdp, :email, :numTel, :type)
+            ");
+            $stmt->execute([
+                ':nom' => $this->_nom,
+                ':identifiant' => $this->_identifiant,
+                ':mdp' => $this->_mdp,
+                ':email' => $this->_email,
+                ':numTel' => $this->_numTel,
+                ':type' => get_class($this),
+            ]);
+        } catch (PDOException $e) {
+            $code = $e->getCode();
+            $message = $e->getMessage();
+    
+            if ($code === '23000') { 
+                if (str_contains($message, 'Duplicate entry')) {
+                    if (str_contains($message, 'identifiant')) {
+                        throw new RuntimeException("L'identifiant est déjà utilisé. Veuillez en choisir un autre.");
+                    } elseif (str_contains($message, 'email')) {
+                        throw new RuntimeException("L'adresse email est déjà associée à un compte.");
+                    } elseif (str_contains($message, 'numTel')) {
+                        throw new RuntimeException("Le numéro de téléphone est déjà utilisé.");
+                    }
+                }
+            }
+                throw new RuntimeException("Une erreur s'est produite lors de l'inscription. Veuillez réessayer plus tard.");
+        }
     }
 }
 ?>

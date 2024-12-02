@@ -18,7 +18,7 @@
             <input type="password" name="mdp" placeholder="Mot de passe" required>
             <button type="submit">Se connecter</button>
         </form>
-        <p style="text-align: center; margin-top: 10px;">
+        <p>
             Pas encore inscrit ? <a href="inscription.php?type=Utilisateur">Inscrivez-vous ici</a>.
         </p>
     </div>

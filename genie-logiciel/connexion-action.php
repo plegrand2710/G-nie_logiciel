@@ -32,11 +32,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        $stmt = $pdo->prepare("SELECT idPersonne FROM Personne WHERE identifiant = :identifiant");
+        $stmt->execute([':identifiant' => $identifiant]);
+        $idPersonne = $stmt->fetch(PDO::FETCH_COLUMN);
+
+        if ($idPersonne) {
+            $_SESSION['idPersonne'] = $idPersonne;
+        } else {
+            header('Location: accueil.php?pb=id');
+            exit;
+        }
+        $_SESSION['identifiant']=$identifiant;
         header('Location: tableau-de-bord.php');
         exit;
     } catch (Exception $e) {
         echo "<script>alert('Erreur lors de la connexion : " . $e->getMessage() . "');</script>";
-        header('Location: index.php');
+        header('Location: accueil.php');
         exit;
     }
 }

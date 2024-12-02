@@ -1,0 +1,204 @@
+/* Reset CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+h1, h2, h3 {
+    text-align: center;
+    margin: 20px 0;
+}
+
+h1 {
+    color: #BF0426;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation */
+.navigation {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.navigation a {
+    color: #BF0426;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border: 1px solid #BF0426;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+.navigation a:hover {
+    background-color: #BF0426;
+    color: #fff;
+}
+
+/* Modes de visualisation */
+.mode-selection {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.mode-selection label {
+    margin: 0 15px;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.mode-selection input {
+    margin-right: 10px;
+}
+
+button {
+    background-color: #BF0426;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #A03020;
+}
+
+/* Calendar */
+
+.calendar-wrapper {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    gap: 1px;
+    margin: 20px auto; /* Centre horizontalement */
+    border: 1px solid #ccc;
+    max-width: 80%; /* Limite la largeur à 80% de la page */
+    background-color: white; /* Ajoute un fond blanc pour plus de contraste */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Ajoute un léger ombrage */
+    border-radius: 8px; /* Coins arrondis */
+}
+.hour-cell {
+    background-color: #f2f2f2;
+    text-align: center;
+    border: 1px solid #ccc;
+    padding: 5px;
+}
+.day-header {
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid #ccc;
+    background-color: #e6e6e6;
+    padding: 5px;
+    font-size: small;
+}
+.day-header.closed {
+    background-color: #d3d3d3;
+    color: #888;
+}
+.day-cell {
+    border: 1px solid #ccc;
+    padding: 5px;
+    min-height: 50px;
+}
+.day-cell.closed {
+    background-color: #595959;
+    color: #aaa;
+}
+
+.cell.disponible {
+    background-color: #d4edda;
+    border: 2px solid #28a745;
+    font-weight: bold;
+}
+
+.cell.activite {
+    background-color: #f8d7da;
+    border: 2px solid #dc3545;
+    font-weight: bold;
+    color: #721c24;
+}
+
+.cell.reserve {
+    background-color: #ffeeba;
+    border: 2px solid #ffc107;
+    font-weight: bold;
+    color: #856404;
+}
+.day-cell.reserved {
+    background-color: #d4edda; /* Vert clair */
+    color: #155724; /* Vert foncé */
+    font-weight: bold;
+    border: 2px solid #28a745;
+}
+
+/* Form for filtering */
+form {
+    text-align: center;
+    margin: 20px 0;
+}
+
+form select, form button {
+    font-size: 1em;
+    padding: 10px;
+    margin: 10px;
+}
+
+select {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Admin Button */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 20px 0;
+    text-decoration: none;
+    background-color: #BF0426;
+    color: white;
+    font-weight: bold;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: #A03020;
+    color: white;
+}
+
+/* Reservations List */
+ul {
+    list-style: none;
+    margin: 20px 0;
+    padding: 0;
+}
+
+li {
+    background: #f9f9f9;
+    margin: 10px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

@@ -1,7 +1,7 @@
 <?php
+session_start();
 include 'require.php';
 
-session_start();
 
 if (!isset($_SESSION['idUtilisateur'])) {
     header('Location: index.php');
@@ -43,7 +43,7 @@ $validite = "1 an";
     <h2>Informations Utilisateur</h2>
     <p>Nom : <?= htmlspecialchars($utilisateur['nom']) ?></p>
     <p>Email : <?= htmlspecialchars($utilisateur['email']) ?></p>
-    <p>Montant de la cotisation : <?= $montant ?> €</p>
+    <p>Montant de la cotisation : <?= $montant ?> XPF</p>
     <p>Durée de validité : <?= $validite ?></p>
 
     <h2>Choisissez un RIB pour le paiement</h2>

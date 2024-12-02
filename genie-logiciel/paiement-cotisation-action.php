@@ -1,7 +1,6 @@
 <?php
-include 'require.php';
-
 session_start();
+include 'require.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $idRIB = (int)$_POST['idRIB'];

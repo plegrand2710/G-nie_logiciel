@@ -22,7 +22,7 @@ CREATE TABLE Personne (
     identifiant VARCHAR(100) NOT NULL UNIQUE,
     mdp VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
-    numTel VARCHAR(15),
+    numTel VARCHAR(15) NOT NULL UNIQUE,
     type ENUM('Utilisateur', 'Moderateur') NOT NULL
 );
 

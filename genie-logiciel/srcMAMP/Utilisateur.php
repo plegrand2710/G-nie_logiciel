@@ -7,25 +7,6 @@ class Utilisateur extends Personne {
         parent::__construct($nomC, $id, $mdpC, $emailC, $numtelC);
         $this->_rib = new Rib();
         $this->_cotisations = [];
-
-        $pdo = $this->getPdo();
-
-        $stmt = $pdo->prepare("SELECT idPersonne FROM Personne WHERE identifiant = :identifiant");
-        $stmt->execute([':identifiant' => $this->getId()]);
-        $idPersonne = $stmt->fetchColumn();
-
-        if (!$idPersonne) {
-            throw new RuntimeException("Échec de l'insertion de l'utilisateur. La personne n'a pas été trouvée.");
-        }
-
-        $stmt = $pdo->prepare("
-            INSERT INTO Utilisateur (cotisation_active, idPersonne)
-            VALUES (:cotisation_active, :idPersonne)
-        ");
-        $stmt->execute([
-            ':cotisation_active' => $this->VerifPayerCotisation() ? 1 : 0,
-            ':idPersonne' => $idPersonne
-        ]);
     }
 
     public function getRib(): Rib {
@@ -88,6 +69,29 @@ class Utilisateur extends Personne {
         } catch (PDOException $e) {
             throw new RuntimeException("Erreur lors de la mise à jour de la cotisation_active : " . $e->getMessage());
         }
+    }
+
+    public function ajouterDansLaBDD(){
+        
+        parent::ajouterDansLaBase();
+        $pdo = $this->getPdo();
+
+        $stmt = $pdo->prepare("SELECT idPersonne FROM Personne WHERE identifiant = :identifiant");
+        $stmt->execute([':identifiant' => $this->getId()]);
+        $idPersonne = $stmt->fetchColumn();
+
+        if (!$idPersonne) {
+            throw new RuntimeException("Échec de l'insertion de l'utilisateur. La personne n'a pas été trouvée.");
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO Utilisateur (cotisation_active, idPersonne)
+            VALUES (:cotisation_active, :idPersonne)
+        ");
+        $stmt->execute([
+            ':cotisation_active' => $this->VerifPayerCotisation() ? 1 : 0,
+            ':idPersonne' => $idPersonne
+        ]);
     }
 }
 ?>

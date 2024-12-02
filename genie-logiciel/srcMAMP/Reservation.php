@@ -1,23 +1,14 @@
 <?php
 
 class Reservation {
-    private static $_ids = [];
-    private int $_id;
-    private Creneau $_creneau;
-    private Activite $_activite;
-    private Personne $_personne;
-    private String $_statut;
-    private DateTime $_dateExpiration;
+    private $_id;
+    private $_creneau;
+    private $_activite;
+    private $_personne;
+    private $_statut;
+    private $_dateExpiration;
 
-    public function __construct($id, $creneau, $activite, $personne) {
-        if (!is_int($id) || $id <= 0) {
-            throw new InvalidArgumentException("L'ID doit être un entier et positif.");
-        }
-
-        if (in_array($id, self::$_ids)) {
-            throw new LogicException("L'ID $id est déjà utilisé par une autre réservation.");
-        }
-
+    public function __construct($creneau, $activite, $personne) {
         if (!$creneau instanceof Creneau) {
             throw new InvalidArgumentException("Le créneau doit être une instance de la classe Creneau.");
         }
@@ -30,12 +21,11 @@ class Reservation {
             throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Personne.");
         }
 
-        self::$_ids[] = $id;
-        $this->_id = $id;
         $this->_creneau = $creneau;
         $this->_activite = $activite;
         $this->_personne = $personne;
         $this->_statut = 'en attente';
+        $this->_id = null;
         $this->_dateExpiration = new DateTime();
         $this->_dateExpiration->modify('+24 hours');
     }
@@ -63,10 +53,14 @@ class Reservation {
     public function getDateExpiration() {
         return $this->_dateExpiration;
     }
-    public static function getIds() {
-        return self::$_ids;
-    }
     
+    public function setId($id) {
+        if (!is_int($id) || $id <= 0) {
+            throw new InvalidArgumentException("L'id doit être un nombre supérieur à 0.");
+        }
+        $this->_id = $id;
+    }
+
     public function setCreneau($creneau) {
         if (!$creneau instanceof Creneau) {
             throw new InvalidArgumentException("Le créneau doit être une instance de la classe Creneau.");
@@ -111,12 +105,6 @@ class Reservation {
         $this->_statut = $statut;
     }
 
-    public static function setIds($ids) {
-        self::$_ids = $ids;
-    }
-    public static function reinitialiseIds(): void {
-        self::$_ids = [];
-    }
 
     public function estExpirée() {
         $now = new DateTime();
@@ -146,11 +134,6 @@ class Reservation {
         }
 
         $this->_statut = 'annulée';
-
-        if (($key = array_search($this->_id, self::$_ids)) !== false) {
-            unset(self::$_ids[$key]);
-            self::$_ids = array_values(self::$_ids);
-        }
     
         return new DateTime();
     }
