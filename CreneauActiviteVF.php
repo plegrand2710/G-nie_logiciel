@@ -1,4 +1,5 @@
 <?php
+namespace App;
 
 use PDO;
 use PDOException;
@@ -12,7 +13,7 @@ class CreneauActivite {
     
 
     function __construct(int $ID_CreneauActivite, int $ID_Creneau, int $ID_Activite, bool $disponible) {
-        $this->set_ID_CreneauActivite($ID_CreneauActivite);
+        //$this->set_ID_CreneauActivite($ID_CreneauActivite);
         $this->set_ID_Creneau($ID_Creneau);
         $this->set_ID_Activite($ID_Activite);
         $this->set_Disponibilité($disponible);
@@ -53,6 +54,39 @@ class CreneauActivite {
     }
 
     //Méthodes
+    public function get_numberCreneauActivite(): int {
+        try {
+            // Connexion à la base de données avec PDO
+            $pdo = new PDO("mysql:host=localhost;dbname=bdd;charset=utf8");
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+            // Nom de la table dont on veut récupérer le nombre de lignes
+            $table = "CreneauActivite";
+        
+            // Requête pour compter les lignes
+            $query = $pdo->prepare("SELECT COUNT(*) AS total FROM $table");
+            $query->execute();
+        
+            // Récupération du résultat
+            $result = $query->fetch(PDO::FETCH_ASSOC);
+            $nombreCreneauActivite = $result['total'];
+        
+            return $nombreCreneauActivite + 1;
+        } catch (PDOException $e) {
+            // Gestion des erreurs
+            echo "Erreur : " . $e->getMessage();
+            return 0;
+        }
+    }
+
+    public function matchCreneauActivite(array $liste_creneaux, Activite $activite): void{
+        foreach($liste_creneaux as $creneau) {
+            if ($creneau->_dureeGlobal == $activite->_duree) {
+                $id_creneauActivite = get_numberCreneauActivite();
+                $CreneauActivite = new CreneauActivite($id_creneauActivite, $creneau->_id_Creneau, $activite->_id_Activite, false);
+            }
+        }
+    }
     public function ajouterCreneauPourActivite(int $ID_Activite, int $ID_Creneau, PDO $pdo): void {
 
         $pdo->beginTransaction();
