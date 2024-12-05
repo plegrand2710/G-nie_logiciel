@@ -1,45 +1,40 @@
 <?php
+require_once 'BaseDeDonnees.php';
+
 
 class Reservation {
     private $_id;
-    private $_creneau;
-    private $_activite;
+    private $_gestionCreneauActiviteReserve;
     private $_personne;
     private $_statut;
     private $_dateExpiration;
+    private $_pdo;
 
-    public function __construct($creneau, $activite, $personne) {
-        if (!$creneau instanceof Creneau) {
-            throw new InvalidArgumentException("Le créneau doit être une instance de la classe Creneau.");
-        }
-
-        if (!$activite instanceof Activite) {
-            throw new InvalidArgumentException("L'activité doit être une instance de la classe Activite.");
+    public function __construct($idGestionCreneauActiviteReserve, $personne) {
+        if (!is_int($idGestionCreneauActiviteReserve) || $idGestionCreneauActiviteReserve <= 0) {
+            throw new InvalidArgumentException("L'ID de gestion du créneau-activité doit être un entier positif.");
         }
 
         if (!$personne instanceof Personne) {
-            throw new InvalidArgumentException("L'utilisateur doit être une instance de la classe Personne.");
+            throw new InvalidArgumentException("La personne doit être une instance de la classe Personne.");
         }
 
-        $this->_creneau = $creneau;
-        $this->_activite = $activite;
+        $this->_gestionCreneauActiviteReserve = $idGestionCreneauActiviteReserve;
         $this->_personne = $personne;
         $this->_statut = 'en attente';
         $this->_id = null;
         $this->_dateExpiration = new DateTime();
         $this->_dateExpiration->modify('+24 hours');
+
+        $bdd = new BaseDeDonnees();
+        $this->_pdo = $bdd->getConnexion();
     }
 
     public function getId() {
         return $this->_id;
     }
-
-    public function getCreneau() {
-        return $this->_creneau;
-    }
-
-    public function getActivite() {
-        return $this->_activite;
+    public function getGestionCreneauActiviteReserve() {
+        return $this->_gestionCreneauActiviteReserve;
     }
 
     public function getPersonne() {
@@ -61,11 +56,27 @@ class Reservation {
         $this->_id = $id;
     }
 
-    public function setCreneau($creneau) {
-        if (!$creneau instanceof Creneau) {
-            throw new InvalidArgumentException("Le créneau doit être une instance de la classe Creneau.");
+    public function setDateExpiration($dateExpiration): void {
+        if (!$dateExpiration instanceof DateTime && !is_string($dateExpiration)) {
+            throw new InvalidArgumentException("La date d'expiration doit être une instance de DateTime ou une chaîne au format 'Y-m-d H:i:s'.");
         }
-        $this->_creneau = $creneau;
+    
+        if (is_string($dateExpiration)) {
+            $date = DateTime::createFromFormat('Y-m-d H:i:s', $dateExpiration);
+            if (!$date || $date->format('Y-m-d H:i:s') !== $dateExpiration) {
+                throw new InvalidArgumentException("La chaîne de date d'expiration n'est pas valide ou n'est pas au format 'Y-m-d H:i:s'.");
+            }
+            $this->_dateExpiration = $date;
+        } else {
+            $this->_dateExpiration = $dateExpiration;
+        }
+    }
+    
+    public function setGestionCreneauActiviteReserve($idGestionCreneauActiviteReserve) {
+        if (!is_int($idGestionCreneauActiviteReserve) || $idGestionCreneauActiviteReserve <= 0) {
+            throw new InvalidArgumentException("L'ID de gestion du créneau-activité doit être un entier positif.");
+        }
+        $this->_gestionCreneauActiviteReserve = $idGestionCreneauActiviteReserve;
     }
 
     public function setPersonne($personne) {
@@ -74,14 +85,6 @@ class Reservation {
         }
 
         $this->_personne = $personne;
-    }
-
-    public function setActivite($activite) {
-        if (!$activite instanceof Activite) {
-            throw new InvalidArgumentException("L'activité doit être une instance de la classe Activite.");
-        }
-
-        $this->_activite = $activite;
     }
 
     public function setStatut($statut) {
@@ -104,7 +107,6 @@ class Reservation {
 
         $this->_statut = $statut;
     }
-
 
     public function estExpirée() {
         $now = new DateTime();
@@ -136,5 +138,23 @@ class Reservation {
         $this->_statut = 'annulée';
     
         return new DateTime();
+    }
+
+    public function getHeureDebut(): string {
+        $stmt = $this->_pdo->prepare("
+            SELECT c.heure_debut 
+            FROM gestionCreneauxActiviteReserve gcar
+            JOIN CreneauxActivite ca ON gcar.idCreneauxActivite = ca.idCreneauxActivite
+            JOIN Creneau c ON ca.idCreneau = c.idCreneau
+            WHERE gcar.idGestion = :idGestion
+        ");
+        $stmt->execute([':idGestion' => $this->_gestionCreneauActiviteReserve]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$result) {
+            throw new RuntimeException("Impossible de trouver l'heure de début pour le créneau associé à cette réservation.");
+        }
+    
+        return $result['heure_debut'];
     }
 }

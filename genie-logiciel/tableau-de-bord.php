@@ -37,9 +37,7 @@ $weekStart->modify('+7 days');
 $nextWeek = $weekStart->modify('+7 days')->format('Y-m-d');
 $weekStart->modify('-7 days');
 
-if ($mode === 'disponibles') {
-    $creneauxDisponibles = $gestionUtilisateur->afficherCreneauxDisponiblesParActivite(0);
-} elseif ($mode === 'reservations') {
+if ($mode === 'reservations') {
     error_log("Erreur d'id: " . gettype($idUtilisateur));
     $reservations = $gestionUtilisateur->afficherReservationsParUtilisateur($idUtilisateur);
 } elseif ($mode === 'activite' && isset($_GET['activite']) && !empty($_GET['activite'])) {
@@ -53,6 +51,8 @@ if ($mode === 'disponibles') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau de Bord</title>
     <link rel="stylesheet" href="tableau-de-bord-css.css">
+    <script src="tableau-de-bord-js.js"></script>
+
 </head>
 <body>
     <h1>Tableau de Bord</h1>
@@ -78,12 +78,8 @@ if ($mode === 'disponibles') {
             Visualisation générale
         </label>
         <label>
-            <input type="radio" name="mode" value="disponibles" <?= isset($_GET['mode']) && $_GET['mode'] === 'disponibles' ? 'checked' : '' ?>>
-            Créneaux disponibles
-        </label>
-        <label>
             <input type="radio" name="mode" value="activite" <?= isset($_GET['mode']) && $_GET['mode'] === 'activite' ? 'checked' : '' ?>>
-            Filtrer par activité
+            Créneaux disponibles filtrer par activité
         </label>
         <label>
             <input type="radio" name="mode" value="reservations" <?= isset($_GET['mode']) && $_GET['mode'] === 'reservations' ? 'checked' : '' ?>>
@@ -188,42 +184,47 @@ if ($mode === 'disponibles') {
         }
         ?>
 
-<?php
+    <?php
 
-for ($hour = strtotime($horaireOuverture); $hour < strtotime($horaireFermeture); $hour = strtotime('+1 hour', $hour)) {
-    $hourDisplay = date('H:i', $hour);
-    echo "<div class='hour-cell'>$hourDisplay</div>";
+        for ($hour = strtotime($horaireOuverture); $hour < strtotime($horaireFermeture); $hour = strtotime('+1 hour', $hour)) {
+            $hourDisplay = date('H:i', $hour);
+            echo "<div class='hour-cell'>$hourDisplay</div>";
 
-    for ($i = 0; $i < 7; $i++) {
-        $currentDay = clone $weekStart;
-        $currentDay->modify("+$i days");
-        $date = $currentDay->format('Y-m-d');
-        $isClosed = in_array($date, $joursFermes);
+            for ($i = 0; $i < 7; $i++) {
+                $currentDay = clone $weekStart;
+                $currentDay->modify("+$i days");
+                $date = $currentDay->format('Y-m-d');
+                $isClosed = in_array($date, $joursFermes);
 
-        $isReserved = false;
-        $reservationDetails = null;
+                $isReserved = false;
+                $isAvailable = !$isClosed;
+                $reservationDetails = null;
 
-        if ($mode === 'reservations' && isset($reservationCases)) {
-            foreach ($reservationCases as $reservation) {
-                error_log("". $reservation['date'] ." ". $date . " " . $reservation['heureDebut'] . " " . date('H:i:s', $hour));
-                if ($reservation['date'] === $date && $reservation['heureDebut'] === date('H:i:s', $hour)) {
-                    $isReserved = true;
-                    $reservationDetails = $reservation;
-                    break;
+                if ($mode === 'reservations' && isset($reservationCases)) {
+                    foreach ($reservationCases as $reservation) {
+                        if ($reservation['date'] === $date && $reservation['heureDebut'] === date('H:i:s', $hour)) {
+                            $isReserved = true;
+                            $isAvailable = false;
+                            $reservationDetails = $reservation;
+                            break;
+                        }
+                    }
                 }
+
+                $cellClass = $isClosed ? 'closed' : ($isReserved ? 'cell reserve' : ($isAvailable ? 'cell disponible' : ''));
+
+                $onclick = $isAvailable ? "onclick=\"reserverCreneau('$date', '" . date('H:i:s', $hour) . "', '" . date('H:i:s', strtotime('+1 hour', $hour)) . "')\"" : '';
+
+                echo "<div class='$cellClass' $onclick>";
+                if ($isReserved && $reservationDetails) {
+                    echo "Réservé : " . htmlspecialchars($reservationDetails['activiteNom']);
+                } elseif ($isAvailable) {
+                    echo "Disponible";
+                }
+                echo "</div>";
             }
         }
-
-        $cellClass = $isClosed ? 'closed' : ($isReserved ? 'reserved' : '');
-
-        echo "<div class='day-cell $cellClass'>";
-        if ($isReserved && $reservationDetails) {
-            echo "Réservé : " . htmlspecialchars($reservationDetails['activiteNom']);
-        }
-        echo "</div>";
-    }
-}
-    ?>
+        ?>
     </div>
 </body>
 </html>
