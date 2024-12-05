@@ -1,11 +1,11 @@
-DROP TABLE IF EXISTS gestionCreneauxActiviteReserve;
-DROP TABLE IF EXISTS CreneauxActivite;
 DROP TABLE IF EXISTS recoit;
 DROP TABLE IF EXISTS ferme;
 DROP TABLE IF EXISTS Fermeture;
 DROP TABLE IF EXISTS Notification;
 DROP TABLE IF EXISTS Remboursement;
 DROP TABLE IF EXISTS Reservation;
+DROP TABLE IF EXISTS gestionCreneauxActiviteReserve;
+DROP TABLE IF EXISTS CreneauxActivite;
 DROP TABLE IF EXISTS Creneau;
 DROP TABLE IF EXISTS Activite;
 DROP TABLE IF EXISTS Cotisation;
@@ -112,6 +112,7 @@ CREATE TABLE gestionCreneauxActiviteReserve (
     idGestion int NOT NULL PRIMARY KEY AUTO_INCREMENT,
     idCreneauxActivite int NOT NULL,
     date date NOT NULL,
+    reserver BOOLEAN NOT NULL,
     FOREIGN KEY (idCreneauxActivite) REFERENCES CreneauxActivite(idCreneauxActivite) ON DELETE CASCADE
 );
 
@@ -125,14 +126,12 @@ CREATE TABLE Calendrier (
 CREATE TABLE Reservation (
     idReservation INT PRIMARY KEY AUTO_INCREMENT,
     statut ENUM('confirmée', 'annulée', 'en attente', 'expirée') NOT NULL,
-    date_reservation DATETIME NOT NULL,
+    date_expiration DATETIME NOT NULL,
     idPersonne INT NOT NULL,
-    idCreneau INT NOT NULL,
-    idActivite INT NOT NULL,
+    idGestion INT NOT NULL,
     idCalendrier INT,
     FOREIGN KEY (idPersonne) REFERENCES Personne(idPersonne) ON DELETE CASCADE,
-    FOREIGN KEY (idCreneau) REFERENCES Creneau(idCreneau) ON DELETE CASCADE,
-    FOREIGN KEY (idActivite) REFERENCES Activite(idActivite)  ON DELETE CASCADE,
+    FOREIGN KEY (idGestion) REFERENCES gestionCreneauxActiviteReserve(idGestion) ON DELETE CASCADE,
     FOREIGN KEY (idCalendrier) REFERENCES Calendrier(idCalendrier)
 );
 
@@ -194,8 +193,8 @@ INSERT INTO `Activite` (`idActivite`, `nom`, `tarif`, `duree`) VALUES (NULL, 'te
 --RIBEntreprise (idRIBEntreprise, numero_compte, code_guichet, cle, code_iban, titulaire_nom, titulaire_prenom, identifiant_rib)  
 --Cotisation (idCotisation, montant, date_paiement, date_fin, #idUtilisateur, #idpaiement)  
 --Activite (idActivite, nom, tarif, duree)  
---Creneau (idCreneau, date, heure_debut, heure_fin, reserve)  
---Reservation (idReservation, statut, date_reservation, #idPersonne, #idCreneau, #idActivite, #idCalendrier)  
+--Creneau (idCreneau, heure_debut, heure_fin, duree)  
+--Reservation (idReservation, statut, date_expiration, #idPersonne, #idGestion, #idCalendrier)  
 --Paiement (idPaiement, montant, date_paiement, #idRIB, #idRIBEntreprise)  
 --Remboursement (idRemboursement, montant, date_remboursement, #idreservation, #idpaiement)  
 --Notification (idNotification, message, type, date_envoi)  
@@ -204,5 +203,5 @@ INSERT INTO `Activite` (`idActivite`, `nom`, `tarif`, `duree`) VALUES (NULL, 'te
 --reçoit (#idPersonne, #idNotification)  
 --ferme (#idFermeture, #idCalendrier) 
 --CreneauxActivite (idCreneauxActivite, #idCreneau, #idActivite) 
---gestionCreneauxActiviteReserve (idGestion, #idCreneauxActivite, date) 
+--gestionCreneauxActiviteReserve (idGestion, #idCreneauxActivite, date, reserver) 
 */
