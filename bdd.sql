@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS gestionCreneauxActiviteReserve;
+DROP TABLE IF EXISTS CreneauxActivite;
 DROP TABLE IF EXISTS recoit;
 DROP TABLE IF EXISTS ferme;
 DROP TABLE IF EXISTS Fermeture;
@@ -22,7 +24,7 @@ CREATE TABLE Personne (
     identifiant VARCHAR(100) NOT NULL UNIQUE,
     mdp VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
-    numTel VARCHAR(15),
+    numTel VARCHAR(15) NOT NULL UNIQUE,
     type ENUM('Utilisateur', 'Moderateur') NOT NULL
 );
 
@@ -92,12 +94,27 @@ CREATE TABLE Activite (
 );
 
 CREATE TABLE Creneau (
-    idCreneau INT PRIMARY KEY AUTO_INCREMENT,
-    date DATE NOT NULL,
-    heure_debut TIME NOT NULL,
-    heure_fin TIME NOT NULL,
-    reserve BOOLEAN NOT NULL
+    idCreneau int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    heure_debut time NOT NULL,
+    heure_fin time NOT NULL,
+    duree time NOT NULL
 );
+
+CREATE TABLE CreneauxActivite (
+    idCreneauxActivite int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    idCreneau int NOT NULL,
+    idActivite int NOT NULL,
+    FOREIGN KEY (idCreneau) REFERENCES Creneau(idCreneau) ON DELETE CASCADE,
+    FOREIGN KEY (idActivite) REFERENCES Activite(idActivite) ON DELETE CASCADE
+);
+
+CREATE TABLE gestionCreneauxActiviteReserve (
+    idGestion int NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    idCreneauxActivite int NOT NULL,
+    date date NOT NULL,
+    FOREIGN KEY (idCreneauxActivite) REFERENCES CreneauxActivite(idCreneauxActivite) ON DELETE CASCADE
+);
+
 
 CREATE TABLE Calendrier (
     idCalendrier INT PRIMARY KEY AUTO_INCREMENT,
@@ -158,6 +175,17 @@ CREATE TABLE ferme (
 );
 
 INSERT INTO `RIBEntreprise` (`idRIBEntreprise`, `numero_compte`, `code_guichet`, `cle`, `code_iban`, `titulaire_nom`, `titulaire_prenom`, `identifiant_rib`) VALUES ('1', '98765', '56', '876', 'FR34567898765432123465', 'salle de sport', 'Entreprise', '123');
+INSERT INTO Personne (nom, identifiant, mdp, email, numTel, type)
+/*motdepasse123*/
+VALUES ('Admin', 'admin123', '$2y$10$X.iK4DEglFWsjE1LCBrfuemGU3RSwpwVU5SYDh4vzqQnhJ54qK42q', 'admin@example.com', '0000000000', 'Moderateur');
+INSERT INTO Moderateur (idPersonne)
+VALUES (LAST_INSERT_ID());
+
+INSERT INTO `Calendrier` (`idCalendrier`, `horaire_ouverture`, `horaire_fermeture`) VALUES ('1', '08:00:00', '21:00:00');
+INSERT INTO `Fermeture` (`idFermeture`, `dateJour`) VALUES ('1', '2024-12-25'), ('2', '2025-01-01'), ('3', '2025-03-05'), ('4', '2025-05-01'), ('5', '2025-05-08');
+INSERT INTO `ferme` (`idFermeture`, `idCalendrier`) VALUES ('1', '1'), ('2', '1'), ('3', '1'), ('4', '1'), ('5', '1');
+INSERT INTO `Activite` (`idActivite`, `nom`, `tarif`, `duree`) VALUES (NULL, 'tennis', '1000', '02:00:00'), (NULL, 'basketball', '500', '01:00:00'), (NULL, 'fitness', '800', '01:30:00');
+
 /*
 --Personne (idPersonne, nom, identifiant, mdp, email, numTel, type)  
 --Utilisateur (idUtilisateur, cotisation_active, #idpersonne)  
@@ -174,4 +202,7 @@ INSERT INTO `RIBEntreprise` (`idRIBEntreprise`, `numero_compte`, `code_guichet`,
 --Calendrier (idCalendrier, horaire_ouverture, horaire_fermeture)  
 --Fermeture (idFermeture, dateJour)  
 --reçoit (#idPersonne, #idNotification)  
---ferme (#idFermeture, #idCalendrier) */
+--ferme (#idFermeture, #idCalendrier) 
+--CreneauxActivite (idCreneauxActivite, #idCreneau, #idActivite) 
+--gestionCreneauxActiviteReserve (idGestion, #idCreneauxActivite, date) 
+*/
