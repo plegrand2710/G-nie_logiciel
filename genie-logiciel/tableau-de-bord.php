@@ -7,21 +7,21 @@ if (!isset($_SESSION['idPersonne']) || !isset($_SESSION['identifiant'])) {
     exit;
 }
 
-$idUtilisateur = $_SESSION['idPersonne'];
+$idPersonne = $_SESSION['idPersonne'];
 
 $bdd = new BaseDeDonnees();
 $pdo = $bdd->getConnexion();
 
-$stmt = $pdo->query("SELECT horaire_ouverture, horaire_fermeture FROM Calendrier LIMIT 1");
+$stmt = $pdo->query("SELECT * FROM Calendrier LIMIT 1");
 $calendrierData = $stmt->fetch(PDO::FETCH_ASSOC);
 $calendrier = new Calendrier($calendrierData['horaire_ouverture'], $calendrierData['horaire_fermeture']);
 
 $horaireOuverture = $calendrierData['horaire_ouverture'];
 $horaireFermeture = $calendrierData['horaire_fermeture'];
 
-$gestionUtilisateur = new GestionUtilisateur($calendrier);
+$gestionUtilisateur = new GestionUtilisateur($calendrierData['idCalendrier']);
 
-$stmt = $pdo->query("SELECT dateJour FROM Fermeture");
+$stmt = $pdo->query("SELECT dateJour FROM JourFermeture");
 $joursFermes = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 $mode = $_GET['mode'] ?? 'general';
@@ -37,11 +37,20 @@ $weekStart->modify('+7 days');
 $nextWeek = $weekStart->modify('+7 days')->format('Y-m-d');
 $weekStart->modify('-7 days');
 
+$stmt = $pdo->prepare("SELECT idUtilisateur FROM Utilisateur WHERE idPersonne = :idPersonne");
+$stmt->execute([':idPersonne' => $idPersonne]);
+$idUtilisateur = $stmt->fetchColumn();
+
 if ($mode === 'reservations') {
-    error_log("Erreur d'id: " . gettype($idUtilisateur));
-    $reservations = $gestionUtilisateur->afficherReservationsParUtilisateur($idUtilisateur);
+    error_log("Erreur d'id: " . gettype($idPersonne));
+    try {
+        $reservations = $gestionUtilisateur->afficherReservationsParUtilisateur((int)$idPersonne);
+    } catch (Exception $e) {
+        echo "Erreur lors de l'affichage des réservations : " . $e->getMessage();
+        exit;
+    }
 } elseif ($mode === 'activite' && isset($_GET['activite']) && !empty($_GET['activite'])) {
-    $creneauxParActivite = $gestionUtilisateur->afficherCreneauxParActiviteParPersonne($idUtilisateur, (int)$_GET['activite']);
+    $creneauxParActivite = $gestionUtilisateur->afficherCreneauxReserveParActiviteParPersonne((int)$idPersonne, (int)$_GET['activite']);
 }
 ?>
 <!DOCTYPE html>
@@ -60,7 +69,7 @@ if ($mode === 'reservations') {
 
     <?php
     $stmt = $pdo->prepare("SELECT * FROM Personne WHERE idPersonne = :idPersonne");
-    $stmt->execute([':idPersonne' => $idUtilisateur]);
+    $stmt->execute([':idPersonne' => $idPersonne]);
     $donnees = $stmt->fetch(PDO::FETCH_ASSOC);
     ?>
 

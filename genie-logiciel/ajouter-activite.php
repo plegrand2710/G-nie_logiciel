@@ -9,7 +9,7 @@
 <body>
     <div class="container">
         <h1>Ajouter une Activité</h1>
-        <form action="traitement-ajouter-activite.php" method="POST">
+        <form action="ajouter-activite-action.php" method="POST">
             <label for="nom">Nom de l'Activité :</label>
             <input type="text" id="nom" name="nom" required>
 

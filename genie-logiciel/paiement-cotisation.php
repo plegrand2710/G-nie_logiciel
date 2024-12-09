@@ -8,16 +8,19 @@ if (!isset($_SESSION['idUtilisateur'])) {
     exit;
 }
 
+$idPersonne = $_SESSION['idPersonne'];
 $idUtilisateur = $_SESSION['idUtilisateur'];
 
 $bdd = new BaseDeDonnees();
 $pdo = $bdd->getConnexion();
 
-$stmt = $pdo->prepare("SELECT * FROM Personne INNER JOIN Utilisateur ON Personne.idPersonne = Utilisateur.idPersonne WHERE Utilisateur.idUtilisateur = :idUtilisateur");
-$stmt->execute([':idUtilisateur' => $idUtilisateur]);
-$utilisateur = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt = $pdo->prepare("SELECT * FROM Personne WHERE idPersonne = :idPersonne");
+$stmt->execute([':idPersonne' => $idPersonne]);
+$personne = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$utilisateur) {
+error_log("personne " . $idPersonne);
+
+if (!$idUtilisateur) {
     echo "Utilisateur introuvable.";
     exit;
 }
@@ -41,8 +44,8 @@ $validite = "1 an";
 <body>
     <h1>Paiement de la Cotisation</h1>
     <h2>Informations Utilisateur</h2>
-    <p>Nom : <?= htmlspecialchars($utilisateur['nom']) ?></p>
-    <p>Email : <?= htmlspecialchars($utilisateur['email']) ?></p>
+    <p>Nom : <?= htmlspecialchars($personne['nom']) ?></p>
+    <p>Email : <?= htmlspecialchars($personne['email']) ?></p>
     <p>Montant de la cotisation : <?= $montant ?> XPF</p>
     <p>Durée de validité : <?= $validite ?></p>
 

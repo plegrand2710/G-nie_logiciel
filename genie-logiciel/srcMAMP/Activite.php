@@ -1,4 +1,5 @@
 <?php
+
 require_once 'BaseDeDonnees.php';
 
 class Activite {
@@ -15,8 +16,6 @@ class Activite {
 
         $bdd = new BaseDeDonnees();
         $this->_pdo = $bdd->getConnexion();
-        $this->_id = null;
-        //$this->ajouterActiviteBDD();
     }
 
     public function getNom() {
@@ -51,6 +50,7 @@ class Activite {
         }
         $this->_duree = $duree;
     }
+
     public function getId() {
         return $this->_id;
     }
@@ -61,7 +61,8 @@ class Activite {
         }
         $this->_id = $id;
     }
-    private function ajouterActiviteBDD() {
+
+    public function ajouterActiviteBDD() {
         $stmt = $this->_pdo->prepare("
             INSERT INTO Activite (nom, tarif, duree) 
             VALUES (:nom, :tarif, :duree)
@@ -74,16 +75,76 @@ class Activite {
         $this->_id = $this->_pdo->lastInsertId();
     }
 
-    private function mettreAJourActiviteBDD() {
+    public function mettreAJourActiviteBDD() {
+        if (empty($this->_id) || $this->_id <= 0) {
+            throw new RuntimeException("ID non défini ou invalide pour mettre à jour l'activité.");
+        }
+    
+        $stmt = $this->_pdo->prepare("SELECT COUNT(*) FROM Activite WHERE idActivite = :id");
+        $stmt->execute([':id' => $this->_id]);
+        $activityExists = $stmt->fetchColumn();
+    
+        if ($activityExists == 0) {
+            throw new RuntimeException("Aucune activité trouvée avec l'ID {$this->_id}. Impossible de mettre à jour.");
+        }
+    
         $stmt = $this->_pdo->prepare("
             UPDATE Activite
             SET tarif = :tarif, duree = :duree
-            WHERE nom = :nom
+            WHERE idActivite = :id
         ");
         $stmt->execute([
-            ':nom' => $this->_nom,
+            ':id' => $this->_id,
             ':tarif' => $this->_tarif,
             ':duree' => $this->_duree
         ]);
     }
+    public function supprimerActiviteBDD() {
+        if (empty($this->_id)) {
+            throw new RuntimeException("ID non défini pour supprimer l'activité.");
+        }
+
+        $stmt = $this->_pdo->prepare("SELECT COUNT(*) FROM Activite WHERE idActivite = :id");
+        $stmt->execute([':id' => $this->_id]);
+        $count = $stmt->fetchColumn();
+
+        if ($count == 0) {
+            throw new RuntimeException("L'activité avec l'ID {$this->_id} n'existe pas.");
+        }
+
+        $stmt = $this->_pdo->prepare("
+            DELETE FROM Activite WHERE idActivite = :id
+        ");
+        $stmt->execute([':id' => $this->_id]);
+    }
+
+    public function lireActiviteBDD() {
+        if (empty($this->_id)) {
+            throw new RuntimeException("ID non défini pour lire l'activité.");
+        }
+        $stmt = $this->_pdo->prepare("SELECT * FROM Activite WHERE idActivite = :id");
+        $stmt->execute([':id' => $this->_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    public function lireToutesActivitesBDD() {
+        $stmt = $this->_pdo->prepare("SELECT * FROM Activite");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function verifierDureeActivite(): bool {
+        $duree = $this->_duree; 
+    
+        list($hours, $minutes, $seconds) = explode(":", $duree);
+        $totalMinutes = ($hours * 60) + $minutes;
+    
+        if ($totalMinutes >= 30 && $totalMinutes <= 300) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
+
+?>

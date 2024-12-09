@@ -4,16 +4,21 @@ include 'require.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $idRIB = (int)$_POST['idRIB'];
-    $idUtilisateur = $_SESSION['idUtilisateur'];
+    $idPersonne = $_SESSION['idPersonne'];
 
     $bdd = new BaseDeDonnees();
     $pdo = $bdd->getConnexion();
+
+    $stmt = $pdo->prepare("SELECT idUtilisateur FROM Utilisateur WHERE idPersonne = :idPersonne");
+    $stmt->execute([':idPersonne' => $idPersonne]);
+    $idUtilisateur = $stmt->fetchColumn();
 
     try {
         $pdo->beginTransaction();
 
         $dateDebut = new DateTime();
-        $cotisation = new Cotisation($dateDebut, $idUtilisateur);
+        $cotisation = new Cotisation($dateDebut, (int)$idUtilisateur);
+        $cotisation->effectuerPaiementCotisation();
 
         $pdo->commit();
 

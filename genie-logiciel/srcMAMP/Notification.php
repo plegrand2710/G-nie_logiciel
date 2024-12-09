@@ -3,19 +3,16 @@
 abstract class Notification {
     private $_message;
 
-    public function envoyerNotification() {
-        // Méthode pour envoyer une notification
-    }
+    abstract public function envoyerNotification(): bool;
 
-    public function afficherNotification() {
-        // Méthode pour afficher une notification
-    }
+    abstract public function afficherNotification(): void;
 
-    public function getMessage() {
+    public function getMessage(): string {
         return $this->_message;
     }
 
-    public function setMessage($message) {
+    public function setMessage(string $message): void {
         $this->_message = $message;
     }
 }
+?>

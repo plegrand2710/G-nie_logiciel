@@ -1,27 +1,56 @@
 <?php
 class Utilisateur extends Personne {
-    private Rib $_rib;
+    private $_ribs;
     private array $_cotisations;
+    private $_idUtilisateur;
 
     public function __construct($nomC, $id, $mdpC, $emailC, $numtelC) {
         parent::__construct($nomC, $id, $mdpC, $emailC, $numtelC);
-        $this->_rib = new Rib();
+        $this->_ribs = [];
         $this->_cotisations = [];
     }
 
-    public function getRib(): Rib {
-        return $this->_rib;
+    public function ajouterRib($rib) {
+        if(!$rib instanceof RIB){
+            throw new InvalidArgumentException("Le RIB doit être de type RIB.");
+        }
+        $this->_ribs[] = $rib;
     }
 
-    public function getCotisations(): array {
+    public function ajouterCotisation(Cotisation $cotisation) {
+        $this->_cotisations[] = $cotisation;
+    }
+    public function setCotisations($cotisations) {
+        $this->cotisations = $cotisations;
+    }
+    public function getRibs() {
+        return $this->_ribs;
+    }
+
+    public function getCotisations() {
         return $this->_cotisations;
     }
 
-    public function setRib($rib): void {
-        if (!$rib instanceof RIB) {
-            throw new InvalidArgumentException("Le rib doit être une instance de RIB.");
+    public function getRib(int $index): ?RIB {
+        return $this->_ribs[$index] ?? null;
+    }
+
+    public function getIdUtilisateur(): int {
+        return $this->_idUtilisateur;
+    }
+
+    public function setIdUtilisateur($id): void {
+        if (!is_int($id) || $id <= 0) {
+            throw new InvalidArgumentException("L'id d'utilisateur doit être un entier positif.");
         }
-        $this->_rib = $rib;
+        $this->_idUtilisateur = $id;
+    }
+
+    public function setRib(int $index, RIB $rib): void {
+        if (!isset($this->_ribs[$index])) {
+            throw new InvalidArgumentException("Le RIB spécifié n'existe pas.");
+        }
+        $this->_ribs[$index] = $rib;
     }
 
     public function addCotisation(Cotisation $cotisation): void {
@@ -32,7 +61,7 @@ class Utilisateur extends Personne {
         $pdo = $this->getPdo();
 
         $stmt = $pdo->prepare("SELECT idUtilisateur FROM Utilisateur WHERE idPersonne = (SELECT idPersonne FROM Personne WHERE identifiant = :identifiant)");
-        $stmt->execute([':identifiant' => $this->getId()]);
+        $stmt->execute([':identifiant' => $this->getIdentifiant()]);
         $idUtilisateur = $stmt->fetchColumn();
 
         if (!$idUtilisateur) {
@@ -48,16 +77,14 @@ class Utilisateur extends Personne {
             $dateFin = new DateTime($cotisation['date_fin']);
             if ($dateFin >= $aujourdhui) {
                 $this->mettreAJourCotisationActive($idUtilisateur, true);
-                echo "Une cotisation valide a été trouvée. Aucun paiement nécessaire.\n";
                 return true;
             }
         }
         $this->mettreAJourCotisationActive($idUtilisateur, false);
-        echo "Aucune cotisation valide trouvée. Paiement nécessaire.\n";
         return false;
     }
 
-    private function mettreAJourCotisationActive(int $idUtilisateur, bool $active): void {
+    public function mettreAJourCotisationActive(int $idUtilisateur, bool $active): void {
         $pdo = $this->getPdo();
     
         try {
@@ -71,27 +98,31 @@ class Utilisateur extends Personne {
         }
     }
 
-    public function ajouterDansLaBDD(){
-        
+    public function ajouterDansLaBDD() {
         parent::ajouterDansLaBase();
         $pdo = $this->getPdo();
-
+    
         $stmt = $pdo->prepare("SELECT idPersonne FROM Personne WHERE identifiant = :identifiant");
-        $stmt->execute([':identifiant' => $this->getId()]);
+        $stmt->execute([':identifiant' => $this->getIdentifiant()]);
         $idPersonne = $stmt->fetchColumn();
-
+    
         if (!$idPersonne) {
             throw new RuntimeException("Échec de l'insertion de l'utilisateur. La personne n'a pas été trouvée.");
         }
-
+    
         $stmt = $pdo->prepare("
             INSERT INTO Utilisateur (cotisation_active, idPersonne)
             VALUES (:cotisation_active, :idPersonne)
         ");
-        $stmt->execute([
+        $stmt->execute([ 
             ':cotisation_active' => $this->VerifPayerCotisation() ? 1 : 0,
             ':idPersonne' => $idPersonne
         ]);
+        $this->_idUtilisateur = $pdo->lastInsertId();
+        foreach ($this->_ribs as $rib) {
+            $rib->ajouterDansBase();
+        }
     }
+    
 }
 ?>

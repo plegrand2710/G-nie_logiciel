@@ -1,120 +1,174 @@
 <?php
-require_once __DIR__ . '/BaseDeDonnees.php';
+
+require_once 'BaseDeDonnees.php';
 
 class CreneauxActivite {
-    private int $_id_CreneauActivite;
-    private int $_id_Creneau;
-    private int $_id_Activite;
+    private int $_idCreneauxActivite;
+    private int $_idCreneau;
+    private int $_idActivite;
     private $_pdo;
+    private static $_calendrier;
 
-
-    function __construct($id_CreneauActivite, $id_Creneau, $id_Activite) {
-        $this->set_ID_CreneauActivite($id_CreneauActivite);
-        $this->set_ID_Creneau($id_Creneau);
-        $this->set_ID_Activite($id_Activite);
+    function __construct($idCreneau, $idActivite) {
         $bdd = new BaseDeDonnees();
         $this->_pdo = $bdd->getConnexion();
+        $this->set_idCreneau($idCreneau);
+        $this->set_idActivite($idActivite);
+        $this->get_CalendrierBDD();
     }
 
-    public function set_ID_CreneauActivite($id_CreneauActivite): void {
-        if (!is_int($id_CreneauActivite) || $id_CreneauActivite <= 0) {
+    public function set_idCreneauxActivite($idCreneauxActivite): void {
+        if (!is_int($idCreneauxActivite) || $idCreneauxActivite <= 0) {
             throw new InvalidArgumentException("L'ID du créneau-activité doit être un entier positif.");
         }
-        $this->_id_CreneauActivite = $id_CreneauActivite;
+        $this->_idCreneauxActivite = $idCreneauxActivite;
     }
     
-    public function set_ID_Creneau($id_Creneau): void {
-        if (!is_int($id_Creneau) || $id_Creneau <= 0) {
+    public function set_idCreneau($idCreneau): void {
+        if (!is_int($idCreneau) || $idCreneau <= 0) {
             throw new InvalidArgumentException("L'ID du créneau doit être un entier positif.");
         }
-        $this->_id_Creneau = $id_Creneau;
+        $this->_idCreneau = $idCreneau;
     }
     
-    public function set_ID_Activite($id_Activite): void {
-        if (!is_int($id_Activite) || $id_Activite <= 0) {
+    public function set_idActivite($idActivite): void {
+        if (!is_int($idActivite) || $idActivite <= 0) {
             throw new InvalidArgumentException("L'ID de l'activité doit être un entier positif.");
         }
-        $this->_id_Activite = $id_Activite;
+        $this->_idActivite = $idActivite;
     }
     
-    public function get_ID_CreneauActivite(): int {
-        return $this->_id_CreneauActivite;
+    public function get_idCreneauxActivite(): int {
+        return $this->_idCreneauxActivite;
     }
 
-    public function get_ID_Creneau(): int {
-        return $this->_id_Creneau;
+    public function get_idCreneau(): int {
+        return $this->_idCreneau;
     }
 
-    public function get_ID_Activite(): int {
-        return $this->_id_Activite;
+    public function get_idActivite(): int {
+        return $this->_idActivite;
     }
 
-    public function genererCreneauxPourActivite(int $idActivite): void {
+    public function get_Calendrier(): Calendrier {
+        return self::$_calendrier;
+    }
+    
+    private function isDureeInvalid(DateInterval $dureeActivite): bool{
+        $minutes = $dureeActivite->h * 60 + $dureeActivite->i;
+        return $minutes < 30 || $minutes > 300; 
+    }
+
+    public function getDureeActivite(int $idActivite): DateInterval {
+        $stmt = $this->_pdo->prepare("SELECT duree FROM Activite WHERE idActivite = :idActivite");
+        $stmt->execute([':idActivite' => $idActivite]);
+        $activite = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$activite) {
+            throw new Exception("Activité introuvable.");
+        }
+    
+        $duree = $activite['duree'];
+
+        list($hours, $minutes, $seconds) = explode(":", $duree);
+
+        return new DateInterval('PT' . $hours . 'H' . $minutes . 'M' . $seconds . 'S');
+    }
+    
+    public function get_CalendrierBDD(): void {
+        $stmt = $this->_pdo->query("SELECT * FROM Calendrier LIMIT 1");
+        $calendrier = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$calendrier) {
+            throw new Exception("Calendrier introuvable.");
+        }
+        self::$_calendrier = new Calendrier($calendrier['horaire_ouverture'], $calendrier['horaire_fermeture']);
+        self::$_calendrier->setID($calendrier['idCalendrier']);
+    }
+    
+    public function getCreneauId(DateTime $heureDebut, DateTime $heureFin, int $idActivite): int {
+        $stmt = $this->_pdo->prepare("SELECT idCreneau FROM Creneau WHERE heure_debut = :heureDebut AND heure_fin = :heureFin");
+        $stmt->execute([
+            ':heureDebut' => $heureDebut->format('H:i:s'),
+            ':heureFin' => $heureFin->format('H:i:s'),
+        ]);
+        $creneau = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$creneau) {
+            $stmt = $this->_pdo->prepare("INSERT INTO Creneau (heure_debut, heure_fin, duree) VALUES (:heureDebut, :heureFin, :duree)");
+            $stmt->execute([
+                ':heureDebut' => $heureDebut->format('H:i:s'),
+                ':heureFin' => $heureFin->format('H:i:s'),
+                ':duree' => $this->getDureeActivite($idActivite)->format('%H:%I:%S'),
+            ]);
+            return $this->_pdo->lastInsertId();
+        } else {
+            return $creneau['idCreneau'];
+        }
+    }
+    
+    public function ajouterCreneauxActivite(): void {
         try {
-            $stmt = $this->_pdo->prepare("SELECT duree FROM Activite WHERE idActivite = :idActivite");
-            $stmt->execute([':idActivite' => $idActivite]);
-            $activite = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $this->_pdo->prepare("
+                INSERT INTO CreneauxActivite (idCreneau, idActivite, idCalendrier) 
+                VALUES (:idCreneau, :idActivite, :idCalendrier)
+            ");
+            $stmt->execute([
+                ':idCreneau' => $this->_idCreneau,
+                ':idActivite' => $this->_idActivite,
+                ':idCalendrier' => self::$_calendrier->getId(),
+            ]);
+            $this->_idCreneauxActivite = $this->_pdo->lastInsertId();
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de l'ajout du créneau activité : " . $e->getMessage());
+        }
+    }
 
-            if (!$activite) {
-                throw new Exception("Activité introuvable.");
-            }
-            $dureeActivite = new DateInterval('PT' . $activite['duree']);
+    public function getCreneauxActiviteById(int $idCreneauxActivite): array {
+        try {
+            $stmt = $this->_pdo->prepare("SELECT * FROM CreneauxActivite WHERE idCreneauxActivite = :idCreneauxActivite");
+            $stmt->execute([':idCreneauxActivite' => $idCreneauxActivite]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la récupération du créneau activité : " . $e->getMessage());
+        }
+    }
 
-            $stmt = $this->_pdo->query("SELECT horaire_ouverture, horaire_fermeture FROM Calendrier LIMIT 1");
-            $calendrier = $stmt->fetch(PDO::FETCH_ASSOC);
+    public function getAllCreneauxActivite(): array {
+        try {
+            $stmt = $this->_pdo->prepare("SELECT * FROM CreneauxActivite");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la récupération des créneaux activités : " . $e->getMessage());
+        }
+    }
 
-            if (!$calendrier) {
-                throw new Exception("Horaires d'ouverture introuvables.");
-            }
+    public function modifierCreneauxActivite(int $idCreneauxActivite): void {
+        try {
+            $stmt = $this->_pdo->prepare("
+                UPDATE CreneauxActivite 
+                SET idCreneau = :idCreneau, idActivite = :idActivite, idCalendrier = :idCalendrier
+                WHERE idCreneauxActivite = :idCreneauxActivite
+            ");
+            $stmt->execute([
+                ':idCreneau' => $this->_idCreneau,
+                ':idActivite' => $this->_idActivite,
+                ':idCalendrier' => self::$_calendrier->getId(),
+                ':idCreneauxActivite' => $idCreneauxActivite,
+            ]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la mise à jour du créneau activité : " . $e->getMessage());
+        }
+    }
 
-            $heureOuverture = new DateTime($calendrier['horaire_ouverture']);
-            $heureFermeture = new DateTime($calendrier['horaire_fermeture']);
-
-            $heureActuelle = clone $heureOuverture;
-            while ($heureActuelle < $heureFermeture) {
-                $heureFin = (clone $heureActuelle)->add($dureeActivite);
-
-                if ($heureFin > $heureFermeture) {
-                    break;
-                }
-
-                $stmt = $this->_pdo->prepare("
-                    SELECT idCreneau FROM Creneau WHERE heure_debut = :heureDebut AND heure_fin = :heureFin
-                ");
-                $stmt->execute([
-                    ':heureDebut' => $heureActuelle->format('H:i:s'),
-                    ':heureFin' => $heureFin->format('H:i:s'),
-                ]);
-                $creneau = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$creneau) {
-                    $stmt = $this->_pdo->prepare("
-                        INSERT INTO Creneau (heure_debut, heure_fin, duree) 
-                        VALUES (:heureDebut, :heureFin, :duree)
-                    ");
-                    $stmt->execute([
-                        ':heureDebut' => $heureActuelle->format('H:i:s'),
-                        ':heureFin' => $heureFin->format('H:i:s'),
-                        ':duree' => $activite['duree'],
-                    ]);
-                    $idCreneau = $this->_pdo->lastInsertId();
-                } else {
-                    $idCreneau = $creneau['idCreneau'];
-                }
-
-                $stmt = $this->_pdo->prepare("
-                    INSERT IGNORE INTO CreneauActivite (idCreneau, idActivite, disponible) 
-                    VALUES (:idCreneau, :idActivite, 1)
-                ");
-                $stmt->execute([
-                    ':idCreneau' => $idCreneau,
-                    ':idActivite' => $idActivite,
-                ]);
-
-                $heureActuelle = $heureFin;
-            }
-        } catch (Exception $e) {
-            throw new Exception("Erreur lors de la génération des créneaux : " . $e->getMessage());
+    public function supprimerCreneauxActivite(int $idCreneauxActivite): void {
+        try {
+            $stmt = $this->_pdo->prepare("DELETE FROM CreneauxActivite WHERE idCreneauxActivite = :idCreneauxActivite");
+            $stmt->execute([':idCreneauxActivite' => $idCreneauxActivite]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la suppression du créneau activité : " . $e->getMessage());
         }
     }
 }
+?>

@@ -83,16 +83,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException("Impossible de récupérer l'ID de l'utilisateur.");
             }
 
-            $rib = new Rib();
-            $rib->initialiseRIB((int)$numeroCompte, (int)$codeGuichet, (int)$cleRib, $iban, $titulaireNom, $titulairePrenom, $identifiantRIB, $idUtilisateur);
-            $utilisateur->setRib($rib);
+            $rib = new Rib((int)$numeroCompte, (int)$codeGuichet, (int)$cleRib, $iban, $titulaireNom, $titulairePrenom, $identifiantRIB, $idUtilisateur);
+            $rib->ajouterDansBase();
+            $utilisateur->ajouterRib($rib);
             $pdo->commit();
+
+            $stmt = $pdo->prepare("SELECT idPersonne FROM Utilisateur WHERE idUtilisateur =  :identifiant");
+            $stmt->execute([':identifiant' => $idUtilisateur]);
+            $idPersonne = $stmt->fetchColumn();
+            
+            $_SESSION['idPersonne'] = $idPersonne;
+
             $_SESSION['idUtilisateur'] = $idUtilisateur;
             header("Location: paiement-cotisation.php");
             exit;
-            $dateDebut = new DateTime();
-            $cotisation = new Cotisation($dateDebut, $idUtilisateur);
-            $utilisateur->addCotisation($cotisation);
         } elseif ($type === 'Moderateur') {
             $moderateur = new Moderateur($nom, $identifiant, $mdp, $email, $numTel);
             $moderateur->ajouterDansLaBDD();
@@ -100,8 +104,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             throw new InvalidArgumentException("Type d'inscription invalide.");
         }
-
-        
 
         header('Location: index.php?reussi=oui');
     } catch (Exception $e) {

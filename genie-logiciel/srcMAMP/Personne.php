@@ -2,28 +2,18 @@
 require_once 'BaseDeDonnees.php';
 
 abstract class Personne {
-    private string $_nom, $_identifiant, $_mdp, $_email, $_numTel;
+    private string $_nom, $_identifiant, $_mdp, $_email, $_numTel, $_idPersonne;
     private PDO $_pdo;
 
-    public function __construct($nomC, $id, $mdpC, $emailC, $numtelC) {
+    public function __construct($nomC, $id, $mdpC, $emailC, $numtelC, $idPersonne = null) {
         $bdd = new BaseDeDonnees();
         $this->_pdo = $bdd->getConnexion();
 
-        if (!is_string($nomC) || empty($nomC)) {
-            throw new InvalidArgumentException("Le nom doit être une chaîne de caractères non vide.");
-        }
-        if (!is_string($id) || empty($id)) {
-            throw new InvalidArgumentException("L'identifiant doit être une chaîne de caractères non vide.");
-        }
-        if (!is_string($mdpC) || strlen($mdpC) < 8) {
-            throw new InvalidArgumentException("Le mot de passe doit être une chaîne d'au moins 8 caractères.");
-        }
-        if (!filter_var($emailC, FILTER_VALIDATE_EMAIL)) {
-            throw new InvalidArgumentException("L'email n'est pas valide.");
-        }
-        if (!preg_match('/^\d{8,10}$/', $numtelC)) {
-            throw new InvalidArgumentException("Le numéro de téléphone doit contenir entre 8 et 10 chiffres.");
-        }
+        $this->setNom($nomC);
+        $this->setIdentifiant($id);
+        $this->setMdp($mdpC);
+        $this->setEmail($emailC);
+        $this->setNumTel($numtelC);
 
         $this->_nom = $nomC;
         $this->_identifiant = $id;
@@ -31,7 +21,12 @@ abstract class Personne {
         $this->_email = $emailC;
         $this->_numTel = $numtelC;
 
-        //$this->ajouterDansLaBase();
+        if ($idPersonne) {
+            $this->_idPersonne = $idPersonne;
+        }
+        else{
+            $this->_idPersonne = "";
+        }
     }
 
     public function getPDO() {
@@ -42,7 +37,7 @@ abstract class Personne {
         return $this->_nom;
     }
 
-    public function getId() {
+    public function getIdentifiant() {
         return $this->_identifiant;
     }
 
@@ -58,6 +53,10 @@ abstract class Personne {
         return $this->_numTel;
     }
 
+    public function getIdPersonne() {
+        return $this->_idPersonne;
+    }
+
     public function setNom($nom1) {
         if (!is_string($nom1) || empty($nom1)) {
             throw new InvalidArgumentException("Le nom doit être une chaîne de caractères non vide.");
@@ -71,9 +70,9 @@ abstract class Personne {
         }
         $this->_pdo = $pdo;
     }
-    public function setId($id1) {
-        if (!is_string($id1) || empty($id1)) {
-            throw new InvalidArgumentException("L'identifiant doit être une chaîne de caractères non vide.");
+    public function setIdentifiant($id1) {
+        if (!is_string($id1) || empty($id1) || strlen($id1) > 255) {
+            throw new InvalidArgumentException("L'identifiant doit être une chaîne de caractères non vide de maximum 255 caractères.");
         }
         $this->_identifiant = $id1;
     }
@@ -94,9 +93,16 @@ abstract class Personne {
 
     public function setNumTel($numTel1) {
         if (!preg_match('/^\d{8,10}$/', $numTel1)) {
-            throw new InvalidArgumentException("Le numéro de téléphone doit contenir entre 8 et chiffres.");
+            throw new InvalidArgumentException("Le numéro de téléphone doit contenir entre 8 et 10 chiffres.");
         }
         $this->_numTel = $numTel1;
+    }
+
+    public function setIdPersonne($id) {
+        if (!is_int($id) || $id <= 0) {
+            throw new InvalidArgumentException("L'id de personne doit être un entier positif.");
+        }
+        $this->_idPersonne = $id;
     }
 
     public function connexion($id1, $mdp1) {
@@ -106,9 +112,62 @@ abstract class Personne {
         return $id1 === $this->_identifiant && password_verify($mdp1, $this->_mdp);
     }
 
-    public function modifierInfoConnexion($id2, $mdp2) {
-        $this->setId($id2);
-        $this->setMdp($mdp2);
+    public function modifierMdp($ancienMdp, $nouveauMdp): void {
+        if (!password_verify($ancienMdp, $this->_mdp)) {
+            throw new InvalidArgumentException("Le mot de passe actuel est incorrect.");
+        }
+    
+        if (!is_string($nouveauMdp) || strlen($nouveauMdp) < 8) {
+            throw new InvalidArgumentException("Le mot de passe doit contenir au moins 8 caractères.");
+        }
+    
+        $nouveauMdpHache = password_hash($nouveauMdp, PASSWORD_DEFAULT);
+    
+        try {
+            $stmt = $this->_pdo->prepare("UPDATE Personne SET mdp = :mdp WHERE idPersonne = :idPersonne");
+            $stmt->execute([
+                ':mdp' => $nouveauMdpHache,
+                ':idPersonne' => $this->_idPersonne
+            ]);
+            $this->_mdp = $nouveauMdpHache; 
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la mise à jour du mot de passe : " . $e->getMessage());
+        }
+    }
+
+    public function supprimerPersonne(): void {
+        if (empty($this->_idPersonne)) {
+            throw new RuntimeException("ID de la personne non défini.");
+        }
+    
+        $stmt = $this->_pdo->prepare("SELECT COUNT(*) FROM Personne WHERE idPersonne = :idPersonne");
+        $stmt->execute([':idPersonne' => $this->_idPersonne]);
+        $exists = $stmt->fetchColumn();
+    
+        if ($exists == 0) {
+            throw new RuntimeException("La personne n'existe pas dans la base de données.");
+        }
+    
+        try {
+            $stmt = $this->_pdo->prepare("DELETE FROM Personne WHERE idPersonne = :idPersonne");
+            $stmt->execute([':idPersonne' => $this->_idPersonne]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la suppression de la personne : " . $e->getMessage());
+        }
+    }
+    
+    public function modifierPersonne($nom, $email, $numTel): void {
+        try {
+            $stmt = $this->_pdo->prepare("UPDATE Personne SET nom = :nom, email = :email, numTel = :numTel WHERE idPersonne = :idPersonne");
+            $stmt->execute([
+                ':nom' => $nom,
+                ':email' => $email,
+                ':numTel' => $numTel,
+                ':idPersonne' => $this->_idPersonne
+            ]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la mise à jour de la personne : " . $e->getMessage());
+        }
     }
 
     public function ajouterDansLaBase() {
@@ -142,6 +201,7 @@ abstract class Personne {
             }
                 throw new RuntimeException("Une erreur s'est produite lors de l'inscription. Veuillez réessayer plus tard.");
         }
+        $this->_idPersonne = $this->_pdo->lastInsertId();
     }
 }
 ?>

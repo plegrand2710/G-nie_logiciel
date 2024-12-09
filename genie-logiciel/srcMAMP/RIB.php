@@ -11,13 +11,9 @@ class RIB {
     private string $_identifiant_Rib;
     private PDO $_pdo;
     private int $_idUtilisateur;
+    private int $_idRib;
 
-    public function __construct() {
-        
-    }
-
-
-    public function initialiseRIB($numCpt, $cGuichet, $cle1, $cIBAN, $tNom, $tPrenom, $identifiantRIB, $idUtilisateur){
+    public function __construct($numCpt, $cGuichet, $cle1, $cIBAN, $tNom, $tPrenom, $identifiantRIB, $idUtilisateur) {
         $this->setNumeroCompte($numCpt);
         $this->setCodeGuichet($cGuichet);
         $this->setCle($cle1);
@@ -26,12 +22,12 @@ class RIB {
         $this->setTitulairePrenom($tPrenom);
         $this->setIdentifiantRIB($identifiantRIB);
         $this->setIdUtilisateur($idUtilisateur);
-
+    
         $bdd = new BaseDeDonnees();
         $this->_pdo = $bdd->getConnexion();
-
-        $this->ajouterDansBase();
     }
+    
+
 
     public function getRib(): String {
         return "" . $this->_numero_compte . "" . $this->_code_guichet . "" . $this->_cle . "" . $this->_code_IBAN . "" . $this->_identifiant_Rib;
@@ -70,67 +66,78 @@ class RIB {
         return $this->_idUtilisateur;
     }
 
-    private function setNumeroCompte($numCpt): void {
+    public function getIdRib(): int {
+        return $this->_idRib;
+    }
+
+    public function setNumeroCompte($numCpt): void {
         if (!is_int($numCpt) || $numCpt <= 0) {
             throw new InvalidArgumentException("Le numéro de compte doit être un entier positif.");
         }
         $this->_numero_compte = (int)$numCpt;
     }
 
-    private function setCodeGuichet($cGuichet): void {
+    public function setCodeGuichet($cGuichet): void {
         if (!is_int($cGuichet) || $cGuichet <= 0) {
             throw new InvalidArgumentException("Le code guichet doit être un entier positif.");
         }
         $this->_code_guichet = (int)$cGuichet;
     }
 
-    private function setCle($cle1): void {
+    public function setCle($cle1): void {
         if (!is_int($cle1) || $cle1 <= 0) {
             throw new InvalidArgumentException("La clé doit être un entier positif.");
         }
         $this->_cle = (int)$cle1;
     }
 
-    private function setCodeIBAN($cIBAN): void {
+    public function setCodeIBAN($cIBAN): void {
         if (!preg_match('/^[A-Z0-9]{15,34}$/', $cIBAN)) {
             throw new InvalidArgumentException("Le code IBAN est invalide.");
         }
         $this->_code_IBAN = $cIBAN;
     }
 
-    private function setTitulaireNom($tNom): void {
+    public function setTitulaireNom($tNom): void {
         if (empty($tNom) || !is_string($tNom)) {
             throw new InvalidArgumentException("Le nom du titulaire doit être une chaîne non vide.");
         }
         $this->_titulaire_nom = $tNom;
     }
 
-    private function setTitulairePrenom($tPrenom): void {
+    public function setTitulairePrenom($tPrenom): void {
         if (empty($tPrenom) || !is_string($tPrenom)) {
             throw new InvalidArgumentException("Le prénom du titulaire doit être une chaîne non vide.");
         }
         $this->_titulaire_prenom = $tPrenom;
     }
 
-    private function setIdentifiantRIB($identifiantRIB): void {
+    public function setIdentifiantRIB($identifiantRIB): void {
         if (empty($identifiantRIB) || !is_string($identifiantRIB)) {
             throw new InvalidArgumentException("L'identifiant RIB doit être une chaîne non vide.");
         }
         $this->_identifiant_Rib = $identifiantRIB;
     }
 
-    private function setIdUtilisateur($idUtilisateur): void {
+    public function setIdUtilisateur($idUtilisateur): void {
         if (!is_int($idUtilisateur) || $idUtilisateur <= 0) {
             throw new InvalidArgumentException("L'ID utilisateur doit être un entier positif.");
         }
         $this->_idUtilisateur = (int)$idUtilisateur;
     }
 
-    private function ajouterDansBase(): void {
+    public function setIdRib($idRib): void {
+        if (!is_int($idRib) || $idRib <= 0) {
+            throw new InvalidArgumentException("L'ID rib doit être un entier positif.");
+        }
+        $this->_idRib = (int)$idRib;
+    }
+
+    public function ajouterDansBase(): void {
         try {
             $stmt = $this->_pdo->prepare("
-                INSERT INTO RIB (numero_compte, code_guichet, cle, code_iban, titulaire_nom, titulaire_prenom, identifiant_rib, idUtilisateur)
-                VALUES (:numero_compte, :code_guichet, :cle, :code_iban, :titulaire_nom, :titulaire_prenom, :identifiant_rib, :idUtilisateur)
+                INSERT INTO RIB (numero_compte, code_guichet, cle, code_iban, titulaire_nom, identifiant_rib, idUtilisateur)
+                VALUES (:numero_compte, :code_guichet, :cle, :code_iban, :titulaire_nom, :identifiant_rib, :idUtilisateur)
             ");
             $stmt->execute([
                 ':numero_compte' => $this->_numero_compte,
@@ -138,12 +145,62 @@ class RIB {
                 ':cle' => $this->_cle,
                 ':code_iban' => $this->_code_IBAN,
                 ':titulaire_nom' => $this->_titulaire_nom,
-                ':titulaire_prenom' => $this->_titulaire_prenom,
                 ':identifiant_rib' => $this->_identifiant_Rib,
                 ':idUtilisateur' => $this->_idUtilisateur,
             ]);
+            $this->_idRib = $this->_pdo->lastInsertId();
         } catch (PDOException $e) {
             throw new RuntimeException("Erreur lors de l'ajout du RIB dans la base : " . $e->getMessage());
         }
+    }
+
+    public function lireRIB(): ?array {
+        try {
+            $stmt = $this->_pdo->prepare("SELECT * FROM RIB WHERE idRib = :idRib");
+            $stmt->execute([':idRib' => $this->_idRib]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la lecture du RIB : " . $e->getMessage());
+        }
+    }
+
+    public function mettreAJourRIB(): void {
+        try {
+            $stmt = $this->_pdo->prepare("
+                UPDATE RIB 
+                SET 
+                    numero_compte = :numero_compte, 
+                    code_guichet = :code_guichet, 
+                    cle = :cle, 
+                    code_iban = :code_iban, 
+                    titulaire_nom = :titulaire_nom, 
+                    identifiant_rib = :identifiant_rib
+                WHERE idRib = :idRib
+            ");
+            $stmt->execute([
+                ':numero_compte' => $this->_numero_compte,
+                ':code_guichet' => $this->_code_guichet,
+                ':cle' => $this->_cle,
+                ':code_iban' => $this->_code_IBAN,
+                ':titulaire_nom' => $this->_titulaire_nom,
+                ':identifiant_rib' => $this->_identifiant_Rib,
+                ':idRib' => $this->_idRib,
+            ]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la mise à jour du RIB : " . $e->getMessage());
+        }
+    }
+
+    public function supprimerRIB(): void {
+        try {
+            $stmt = $this->_pdo->prepare("DELETE FROM RIB WHERE idRib = :idRib");
+            $stmt->execute([':idRib' => $this->_idRib]);
+        } catch (PDOException $e) {
+            throw new RuntimeException("Erreur lors de la suppression du RIB : " . $e->getMessage());
+        }
+    }
+
+    public function afficherRIB(): void {
+        echo "RIB : {$this->getRib()}\n";
     }
 }
