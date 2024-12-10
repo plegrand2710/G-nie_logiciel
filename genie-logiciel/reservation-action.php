@@ -23,6 +23,7 @@ $stmt = $pdo->query("SELECT * FROM Calendrier LIMIT 1");
 $calendrierData = $stmt->fetch(PDO::FETCH_ASSOC);
 $calendrier = new Calendrier($calendrierData['horaire_ouverture'], $calendrierData['horaire_fermeture']);
 
+
 $stmt = $pdo->prepare("
     SELECT ca.idCreneauxActivite
     FROM CreneauxActivite ca
@@ -37,6 +38,7 @@ $stmt->execute([
     ':heureFin' => $heureFin
 ]);
 
+
 $creneauActivite = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$creneauActivite) {
@@ -45,7 +47,7 @@ if (!$creneauActivite) {
 
 $stmt = $pdo->prepare("
     INSERT INTO CreneauxActiviteReserve (idCreneauxActivite, date, reserver)
-    VALUES (:idCreneauxActivite, :date, 1)
+    VALUES (:idCreneauxActivite, :date, 0)
 ");
 $stmt->execute([
     ':idCreneauxActivite' => $creneauActivite['idCreneauxActivite'],
@@ -56,7 +58,10 @@ $idCreneauxActiviteReserve = $pdo->lastInsertId();
 
 try {
     $gestionUtilisateur = new GestionUtilisateur($calendrierData['idCalendrier']);
+    
     $gestionUtilisateur->reserver((int)$idCreneauxActiviteReserve, (int)$idUtilisateur); 
+    
+    error_log("je suis là");
     header('Location: confirmation-reservation.php'); 
     exit;
 } catch (Exception $e) {

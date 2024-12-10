@@ -15,6 +15,7 @@ class GestionUtilisateur {
         $this->_paiement = null;
         $this->_remboursement = null;
 
+        error_log("je suis dans la classe");
     }
 
     public function getIdCalendrier(): int {
@@ -95,21 +96,24 @@ class GestionUtilisateur {
     public function reserver($idCreneauxActiviteReserve, $idPersonne) {
         $this->verifierIdCreneauxActiviteReserve($idCreneauxActiviteReserve);
         $this->verifierPersonne($idPersonne);
-    
+
         $typePersonne = $this->getPersonneType($idPersonne);
         if ($typePersonne === 'Utilisateur') {
+
             $personne = $this->chargerUtilisateurDepuisId($idPersonne);
+
             if (!$personne->verifPayerCotisation()) {
                 throw new LogicException("L'utilisateur doit avoir une cotisation valide pour réserver.");
             }
         } else {
             $personne = $this->chargerModerateurDepuisId($idPersonne);
         }
-    
+
         $this->verifierDisponibiliteCreneau($idCreneauxActiviteReserve);
-    
+        error_log("je suis dans réservé");
+
         $reservation = new Reservation($idCreneauxActiviteReserve, $idPersonne);
-    
+
         if ($personne instanceof Utilisateur) {
             $this->paiementActivite($personne->getIdUtilisateur(), $this->getActiviteByGestionId($idCreneauxActiviteReserve)->getId());
         }
@@ -169,7 +173,7 @@ class GestionUtilisateur {
         $stmt = $this->_pdo->prepare("SELECT reserver FROM CreneauxActiviteReserve WHERE idCreneauxActiviteReserve = :idCreneauxActiviteReserve AND reserver = true");
         $stmt->execute([':idCreneauxActiviteReserve' => $idCreneauxActiviteReserve]);
         $reserver = $stmt->fetchColumn();
-    
+        error_log(($reserver));
         if ($reserver) {
             throw new LogicException("Le créneau est déjà réservé.");
         }
@@ -786,9 +790,8 @@ class GestionUtilisateur {
         $utilisateur->setIdUtilisateur((int)$personneData['idUtilisateur']);
 
         $cotisations = $this->getCotisations($utilisateur->getIdUtilisateur());
-
+        
         $utilisateur->setCotisations($cotisations);
-    
         return $utilisateur;
     }
 

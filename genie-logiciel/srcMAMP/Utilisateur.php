@@ -21,7 +21,7 @@ class Utilisateur extends Personne {
         $this->_cotisations[] = $cotisation;
     }
     public function setCotisations($cotisations) {
-        $this->cotisations = $cotisations;
+        $this->_cotisations = $cotisations;
     }
     public function getRibs() {
         return $this->_ribs;
