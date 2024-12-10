@@ -1,0 +1,110 @@
+/* Global Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #0d0d0d; /* Fond sombre */
+    color: #fff; /* Texte blanc */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column; /* Positionne en colonne : titre + formulaire */
+    text-align: center; /* Centre le texte horizontalement */
+}
+
+/* En-tête */
+.header {
+    margin-bottom: 20px; /* Espace entre le titre et le formulaire */
+}
+
+.header h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+}
+
+/* Conteneur principal */
+.container {
+    max-width: 400px;
+    width: 100%;
+    padding: 20px 30px;
+    background-color: #1a1a1a; /* Fond sombre pour le formulaire */
+    border: 1px solid #333; /* Légère bordure pour le contraste */
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Effet d'ombre */
+}
+
+/* Titres */
+.login-form h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #ff6b6b; /* Couleur rouge pour correspondre au bouton de la capture */
+    text-align: center;
+}
+
+/* Champs du formulaire */
+.login-form input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #555; /* Bordure grise foncée */
+    border-radius: 5px;
+    background-color: #262626; /* Fond sombre des champs */
+    color: #fff;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+.login-form input::placeholder {
+    color: #888; /* Texte indicatif clair */
+}
+
+.login-form button {
+    width: 100%;
+    padding: 12px;
+    background-color: #ff6b6b; /* Couleur rouge pour correspondre au style */
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-form button:hover {
+    background-color: #e63939; /* Rouge plus foncé au survol */
+}
+
+/* Lien d'inscription */
+.login-form p {
+    text-align: center;
+    margin-top: 10px;
+    color: #aaa;
+    font-size: 14px;
+}
+
+.login-form p a {
+    color: #ff6b6b; /* Lien rouge */
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.login-form p a:hover {
+    text-decoration: underline;
+}
+
+/* Réactivité pour petits écrans */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px 20px;
+    }
+
+    .login-form h2 {
+        font-size: 20px;
+    }
+
+    .login-form input,
+    .login-form button {
+        font-size: 14px;
+    }
+}
